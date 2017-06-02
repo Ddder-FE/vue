@@ -68,6 +68,7 @@ declare interface Component {
   _vnode: ?VNode; // self root node
   _hasHookEvent: boolean;
   _provided: ?Object;
+  _xTemplateMaps: ?Object;
 
   // private methods
 

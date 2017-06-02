@@ -247,8 +247,15 @@ export function createPatchFunction (backend) {
   function insert (parent, elm, ref) {
     if (isDef(parent)) {
       if (isDef(ref)) {
-        if (ref.parentNode === parent) {
-          nodeOps.insertBefore(parent, elm, ref)
+        // compatible with parent || parentNode
+        if (ref.hasOwnProperty(parentNode)) {
+          if (ref.parentNode === parent) {
+            nodeOps.insertBefore(parent, elm, ref)
+          }
+        } else if (ref.hasOwnProperty(parent)) {
+          if (ref.parent === parent) {
+            nodeOps.insertBefore(parent, elm, ref)
+          }
         }
       } else {
         nodeOps.appendChild(parent, elm)

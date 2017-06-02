@@ -145,6 +145,8 @@ declare type ASTElement = {
 
   // weex specific
   appendAsTree?: boolean;
+
+  xTemplateMaps?: {[string]: string};
 };
 
 declare type ASTExpression = {

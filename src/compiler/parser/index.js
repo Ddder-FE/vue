@@ -36,6 +36,7 @@ let delimiters
 let transforms
 let preTransforms
 let postTransforms
+let endTransforms
 let platformIsPreTag
 let platformMustUseProp
 let platformGetTagNamespace
@@ -73,6 +74,7 @@ export function parse (
   transforms = pluckModuleFunction(options.modules, 'transformNode')
   preTransforms = pluckModuleFunction(options.modules, 'preTransformNode')
   postTransforms = pluckModuleFunction(options.modules, 'postTransformNode')
+  endTransforms = pluckModuleFunction(options.modules, 'endTransformNode')
 
   delimiters = options.delimiters
 
@@ -230,6 +232,11 @@ export function parse (
       stack.length -= 1
       currentParent = stack[stack.length - 1]
       endPre(element)
+
+      // apply end-transforms
+      for (let i = 0; i < endTransforms.length; i++) {
+        endTransforms[i](element, options);
+      }
     },
 
     chars (text: string) {

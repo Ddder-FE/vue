@@ -63,6 +63,7 @@ declare interface VNodeData {
     value: any;
     callback: Function;
   };
+  xTemplateMaps?: {[string]: string};
 };
 
 declare type VNodeDirective = {
