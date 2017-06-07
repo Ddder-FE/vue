@@ -77,7 +77,9 @@ export function createInstance (
   })
 
   // todo: ddder 暂时没有 bundle 为一个文件，所以，应该不是以string 类型的appCode 来作为入口调用的
-  callFunction(instanceVars, appCode)
+  // callFunction(instanceVars, appCode)
+
+  return instanceVars
 }
 
 /**

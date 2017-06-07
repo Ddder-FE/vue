@@ -83,7 +83,9 @@ function createInstance (
   });
 
   // todo: ddder 暂时没有 bundle 为一个文件，所以，应该不是以string 类型的appCode 来作为入口调用的
-  callFunction(instanceVars, appCode);
+  // callFunction(instanceVars, appCode)
+
+  return instanceVars
 }
 
 /**
@@ -191,26 +193,6 @@ function createVueModuleInstance (instanceId) {
   });
 
   return Vue
-}
-
-/**
- * Call a new function body with some global objects.
- * @param  {object} globalObjects
- * @param  {string} code
- * @return {any}
- */
-function callFunction (globalObjects, body) {
-  var globalKeys = [];
-  var globalValues = [];
-
-  for (var key in globalObjects) {
-    globalKeys.push(key);
-    globalValues.push(globalObjects[key]);
-  }
-  globalKeys.push(body);
-
-  var result = new (Function.prototype.bind.apply( Function, [ null ].concat( globalKeys) ));
-  return result.apply(void 0, globalValues)
 }
 
 exports.init = init;

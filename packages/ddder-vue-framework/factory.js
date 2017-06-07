@@ -5,7 +5,7 @@
  */
 'use strict';
 
-module.exports = function ddderFactory (exports, renderer) {
+exports.VueFactory = function ddderFactory (exports, renderer) {
 
 /*  */
 

@@ -27,7 +27,9 @@ const weexFactoryPlugin = {
 
 const ddderFactoryPlugin = {
   intro () {
-    return 'module.exports = function ddderFactory (exports, renderer) {'
+    // ddder module system is not a standard cjs format
+    // so, instead of use `module.exports`, we just export the factory by `exports.VueFactory`
+    return 'exports.VueFactory = function ddderFactory (exports, renderer) {'
   },
   outro () {
     return '}'
