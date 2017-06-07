@@ -7,6 +7,7 @@ const node = require('rollup-plugin-node-resolve')
 const flow = require('rollup-plugin-flow-no-whitespace')
 const version = process.env.VERSION || require('../package.json').version
 const weexVersion = process.env.WEEX_VERSION || require('../packages/weex-vue-framework/package.json').version
+const ddderVersion = process.env.DDDER_VERSION || require('../packages/ddder-vue-framework/package.json').version
 
 const banner =
   '/*!\n' +
@@ -18,6 +19,15 @@ const banner =
 const weexFactoryPlugin = {
   intro () {
     return 'module.exports = function weexFactory (exports, document) {'
+  },
+  outro () {
+    return '}'
+  }
+}
+
+const ddderFactoryPlugin = {
+  intro () {
+    return 'module.exports = function ddderFactory (exports, renderer) {'
   },
   outro () {
     return '}'
@@ -165,6 +175,21 @@ const builds = {
     dest: resolve('packages/weex-template-compiler/build.js'),
     format: 'cjs',
     external: Object.keys(require('../packages/weex-template-compiler/package.json').dependencies)
+  },
+  'ddder-factory': {
+    ddder: true,
+    entry: resolve('ddder/entry-runtime-factory-with-compiler.js'),
+    dest: resolve('packages/ddder-vue-framework/factory.js'),
+    format: 'cjs',
+    plugins: [ddderFactoryPlugin],
+    alias: { he: './entity-decoder' },
+    banner
+  },
+  'ddder-framework': {
+    ddder: true,
+    entry: resolve('ddder/entry-framework.js'),
+    dest: resolve('packages/ddder-vue-framework/index.js'),
+    format: 'cjs'
   }
 }
 
@@ -177,7 +202,9 @@ function genConfig (name) {
       replace({
         __WEEX__: !!opts.weex,
         __WEEX_VERSION__: weexVersion,
-        __VERSION__: version
+        __VERSION__: version,
+        __DDDER__: !!opts.ddder,
+        __DDDER_VERSION__: ddderVersion
       }),
       flow(),
       buble(),

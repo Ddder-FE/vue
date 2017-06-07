@@ -1,6 +1,7 @@
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
+/* @flow */
 
 'use strict';
 

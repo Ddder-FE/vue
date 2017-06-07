@@ -1,6 +1,7 @@
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
+/* @flow */
 
 'use strict';
 
@@ -21,7 +22,9 @@ export const reservedTags = [
 export function makeReservedTemplateTags() : Array<string> {
   let tags = []
 
-  for (let tag of reservedTags) {
+  for (let i = 0; i < reservedTags.length; i++) {
+    let tag = reservedTags[i];
+
     if (Array.isArray(tag)) tag = tag[0]
 
     if (typeof tag === 'string') tags.push(tag)
@@ -33,7 +36,9 @@ export function makeReservedTemplateTags() : Array<string> {
 export function mapReservedTags() : {string : string} {
   let map = {}
 
-  for (let tag of reservedTags) {
+  for (let i = 0; i < reservedTags.length; i++) {
+    let tag = reservedTags[i];
+
     if (Array.isArray(tag)) map[tag[0]] = tag[1]
     else if (typeof tag === 'string') map[tag] = tag
   }

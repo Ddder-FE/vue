@@ -3,3 +3,6 @@
  */
 
 'use strict';
+
+
+export default []
