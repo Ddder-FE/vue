@@ -30,7 +30,7 @@ export function makeReservedTemplateTags() : Array<string> {
     if (typeof tag === 'string') tags.push(tag)
   }
 
-  return tags
+  return tags.join(',')
 }
 
 export function mapReservedTags() : {string : string} {

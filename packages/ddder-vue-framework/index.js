@@ -7,10 +7,11 @@ Object.defineProperty(exports, '__esModule', { value: true });
  */
 
 // todo: need to build vue into an factory function like weex-vue build script
-var VueFactory = require('./factory');
+var VueFactory = require('./factory.js').VueFactory;
 
 var instances = {};
 var components = {};
+var modules = {};
 
 var renderer = {
   instances: instances,
@@ -21,7 +22,6 @@ var renderer = {
 function init (cfg) {
   renderer.Document = cfg.Document;
   renderer.Element = cfg.Element;
-  renderer.Comment = cfg.Comment;
 }
 
 function reset() {

@@ -4,11 +4,11 @@
 
 'use strict';
 
-// todo: need to build vue into an factory function like weex-vue build script
-const VueFactory = require('./factory')
+const VueFactory = require('./factory.js').VueFactory;
 
 const instances = {}
 const components = {}
+const modules = {}
 
 const renderer = {
   instances,
@@ -19,7 +19,6 @@ const renderer = {
 export function init (cfg) {
   renderer.Document = cfg.Document
   renderer.Element = cfg.Element
-  renderer.Comment = cfg.Comment
 }
 
 export function reset() {

@@ -80,4 +80,4 @@ function getOuterTemplate (el): string {
 
 Vue.compile = compileToFunctions
 
-export default Vue
+exports.Vue = Vue

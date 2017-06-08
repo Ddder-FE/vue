@@ -4164,20 +4164,20 @@ function dedupe (latest, extended, sealed) {
   }
 }
 
-function Vue$3 (options) {
+function Vue$2 (options) {
   if (process.env.NODE_ENV !== 'production' &&
-    !(this instanceof Vue$3)
+    !(this instanceof Vue$2)
   ) {
     warn('Vue is a constructor and should be called with the `new` keyword');
   }
   this._init(options);
 }
 
-initMixin(Vue$3);
-stateMixin(Vue$3);
-eventsMixin(Vue$3);
-lifecycleMixin(Vue$3);
-renderMixin(Vue$3);
+initMixin(Vue$2);
+stateMixin(Vue$2);
+eventsMixin(Vue$2);
+lifecycleMixin(Vue$2);
+renderMixin(Vue$2);
 
 /*  */
 
@@ -4494,20 +4494,20 @@ function initGlobalAPI (Vue) {
   initAssetRegisters(Vue);
 }
 
-initGlobalAPI(Vue$3);
+initGlobalAPI(Vue$2);
 
-Object.defineProperty(Vue$3.prototype, '$isServer', {
+Object.defineProperty(Vue$2.prototype, '$isServer', {
   get: isServerRendering
 });
 
-Object.defineProperty(Vue$3.prototype, '$ssrContext', {
+Object.defineProperty(Vue$2.prototype, '$ssrContext', {
   get: function get () {
     /* istanbul ignore next */
     return this.$vnode.ssrContext
   }
 });
 
-Vue$3.version = '2.3.3';
+Vue$2.version = '2.3.3';
 
 /*  */
 /* globals renderer */
@@ -4523,23 +4523,16 @@ function createElement$1 (tagName) {
 
 // we use div to mock text node
 function createTextNode(text) {
-  var mockTextNode = createElement$1('div');
-  mockTextNode.append(text);
-
-  mockTextNode.getNodeType = function () { return 'text'; };
-
-  mockTextNode.text = text;
+  var mockTextNode = createElement$1('text');
+  setTextContent(mockTextNode, text);
 
   return mockTextNode
 }
 
+// todo: ddder do not support comment node
 function createComment(text) {
-  var mockCommentNode = createElement$1('div');
-  mockCommentNode.append(text);
-
-  mockCommentNode.getNodeType = function () { return 'comment'; };
-
-  mockCommentNode.comment = text;
+  var mockCommentNode = createElement$1('comment');
+  setTextContent(mockCommentNode, text);
 
   return mockCommentNode
 }
@@ -4556,23 +4549,20 @@ function appendChild(node, child) {
   node.appendChild(child);
 }
 
-function parentNode$1(node) {
-  return node.parent || node.parentNode
+function parentNode(node) {
+  return node.parentNode
 }
 
 function nextSibling(node) {
-  if (node.hasOwnProperty('nextSibling')) { return node.nextSibling }
+  return node.nextSibling
 }
 
 function tagName(node) {
-  return node.getNodeType()
+  return node.tagName
 }
 
 function setTextContent(node, text) {
-
-  //
-  // node.getContent().clearAll()
-  // node.append(text)
+  node.textContent = text;
 }
 
 function setAttribute(node, key, val) {
@@ -4587,7 +4577,7 @@ var nodeOps = Object.freeze({
 	insertBefore: insertBefore,
 	removeChild: removeChild,
 	appendChild: appendChild,
-	parentNode: parentNode$1,
+	parentNode: parentNode,
 	nextSibling: nextSibling,
 	tagName: tagName,
 	setTextContent: setTextContent,
@@ -4848,15 +4838,8 @@ function createPatchFunction (backend) {
   function insert (parent, elm, ref) {
     if (isDef(parent)) {
       if (isDef(ref)) {
-        // compatible with parent || parentNode
-        if (ref.hasOwnProperty(parentNode)) {
-          if (ref.parentNode === parent) {
-            nodeOps.insertBefore(parent, elm, ref);
-          }
-        } else if (ref.hasOwnProperty(parent)) {
-          if (ref.parent === parent) {
-            nodeOps.insertBefore(parent, elm, ref);
-          }
+        if (ref.parentNode === parent) {
+          nodeOps.insertBefore(parent, elm, ref);
         }
       } else {
         nodeOps.appendChild(parent, elm);
@@ -5506,7 +5489,7 @@ function makeReservedTemplateTags()  {
     if (typeof tag === 'string') { tags.push(tag); }
   }
 
-  return tags
+  return tags.join(',')
 }
 
 function mapReservedTags()  {
@@ -5546,18 +5529,18 @@ function query () {}
  */
 
 // install platform specific utils
-Vue$3.config.mustUseProp = mustUseProp;
-Vue$3.config.isReservedTag = isReservedTag;
-Vue$3.config.isUnknownElement = isUnknownElement;
+Vue$2.config.mustUseProp = mustUseProp;
+Vue$2.config.isReservedTag = isReservedTag;
+Vue$2.config.isUnknownElement = isUnknownElement;
 
 // install platform runtime directives and components
-Vue$3.options.directives = platformDirectives;
-Vue$3.options.components = platformComponents;
+Vue$2.options.directives = platformDirectives;
+Vue$2.options.components = platformComponents;
 
-Vue$3.prototype.__patch__ = patch;
+Vue$2.prototype.__patch__ = patch;
 
 // wrap mount
-Vue$3.prototype.$mount = function (el, hydrating) {
+Vue$2.prototype.$mount = function (el, hydrating) {
   return mountComponent(this, el && query(el, this.$document), hydrating)
 };
 
@@ -7924,7 +7907,7 @@ var idToTemplate = function (id, instance) {
     id = id.slice(1);
   }
 
-  if (!instance || !(instance instanceof Vue$3)) { return }
+  if (!instance || !(instance instanceof Vue$2)) { return }
 
   var template;
 
@@ -7935,9 +7918,9 @@ var idToTemplate = function (id, instance) {
   return template
 };
 
-var mount = Vue$3.prototype.$mount;
-Vue$3.prototype.$mount = function(el, hydrating) {
-  if (el === Vue$3.$document) {
+var mount = Vue$2.prototype.$mount;
+Vue$2.prototype.$mount = function(el, hydrating) {
+  if (el === Vue$2.$document) {
     process.env.NODE_ENV !== 'production' && warn(
       "Do not mount Vue to root document or body, try to mount to normal elements instead"
     );
@@ -7986,8 +7969,8 @@ function getOuterTemplate (el) {
   return ''
 }
 
-Vue$3.compile = compileToFunctions;
+Vue$2.compile = compileToFunctions;
 
-module.exports = Vue$3;
+exports.Vue = Vue$2;
 
 }
