@@ -5402,7 +5402,7 @@ var baseModules = [
 
 function updateInstanceXTemplates(oldVNode, vnode) {
   var data = vnode.data;
-  var oldData = oldVnode.data;
+  var oldData = oldVNode.data;
 
   if (isUndef(data.xTemplateMaps) && (isUndef(oldData) || isUndef(oldData.xTemplateMaps))) {
     return
@@ -5519,9 +5519,6 @@ var isUnaryTag = makeMap('img, stroke-canvas');
 
 var canBeLeftOpenTag = makeMap('');
 
-// TODO: no achievement before function purpose is known
-function query () {}
-
 /*  */
 
 /**
@@ -5541,17 +5538,17 @@ Vue$2.prototype.__patch__ = patch;
 
 // wrap mount
 Vue$2.prototype.$mount = function (el, hydrating) {
-  return mountComponent(this, el && query(el, this.$document), hydrating)
+  return mountComponent(this, el, hydrating)
 };
 
+/**
+ * Created by zhiyuan.huang@rdder.com on 17/6/9.
+ */
 /*  */
 
-var decoder;
-
-function decode (html) {
-  decoder = decoder || document.createElement('div');
-  decoder.innerHTML = html;
-  return decoder.textContent
+// decode method for ddder
+function decode(html) {
+  return html;
 }
 
 /*  */
@@ -7920,7 +7917,7 @@ var idToTemplate = function (id, instance) {
 
 var mount = Vue$2.prototype.$mount;
 Vue$2.prototype.$mount = function(el, hydrating) {
-  if (el === Vue$2.$document) {
+  if (el === this.$document) {
     process.env.NODE_ENV !== 'production' && warn(
       "Do not mount Vue to root document or body, try to mount to normal elements instead"
     );

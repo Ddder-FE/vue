@@ -31,7 +31,7 @@ const idToTemplate = (id, instance: Component) => {
 
 const mount = Vue.prototype.$mount
 Vue.prototype.$mount = function(el, hydrating?: boolean): Component {
-  if (el === Vue.$document) {
+  if (el === this.$document) {
     process.env.NODE_ENV !== 'production' && warn(
       `Do not mount Vue to root document or body, try to mount to normal elements instead`
     )

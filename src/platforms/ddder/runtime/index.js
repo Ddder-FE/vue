@@ -13,7 +13,6 @@ import platformDirectives from 'ddder/runtime/directives/index';
 import platformComponents from 'ddder/runtime/components/index';
 
 import {
-  query,
   mustUseProp,
   isReservedTag,
   isUnknownElement
@@ -32,7 +31,7 @@ Vue.prototype.__patch__ = patch
 
 // wrap mount
 Vue.prototype.$mount = function (el?: any, hydrating?: boolean): Component {
-  return mountComponent(this, el && query(el, this.$document), hydrating)
+  return mountComponent(this, el, hydrating)
 }
 
 export default Vue

@@ -6,7 +6,6 @@ Object.defineProperty(exports, '__esModule', { value: true });
  * Created by zhiyuan.huang@rdder.com on 17/6/5.
  */
 
-// todo: need to build vue into an factory function like weex-vue build script
 var VueFactory = require('./factory.js').VueFactory;
 
 var instances = {};

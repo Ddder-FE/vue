@@ -59,6 +59,3 @@ export function isUnknownElement () {}
 export const isUnaryTag = makeMap('img, stroke-canvas')
 
 export const canBeLeftOpenTag = makeMap('')
-
-// TODO: no achievement before function purpose is known
-export function query () {}

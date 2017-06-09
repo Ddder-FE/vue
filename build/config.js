@@ -184,7 +184,7 @@ const builds = {
     dest: resolve('packages/ddder-vue-framework/factory.js'),
     format: 'cjs',
     plugins: [ddderFactoryPlugin],
-    alias: { he: './entity-decoder' },
+    alias: { he: resolve('ddder/compiler/util/entity-decoder.js') },
     banner
   },
   'ddder-framework': {
