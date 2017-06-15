@@ -13,7 +13,7 @@ import {
 
 function updateInstanceXTemplates(oldVNode: VNode, vnode: VNode) {
   const data: VNodeData = vnode.data
-  const oldData: VNodeData = oldVnode.data
+  const oldData: VNodeData = oldVNode.data
 
   if (isUndef(data.xTemplateMaps) && (isUndef(oldData) || isUndef(oldData.xTemplateMaps))) {
     return
