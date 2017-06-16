@@ -471,10 +471,12 @@ describe('parser', () => {
     expect(ast.props[0].value).toBe('val')
   })
 
-  it('pre/post transforms', () => {
+  it('pre/post/end transforms', () => {
     const options = extend({}, baseOptions)
     const spy1 = jasmine.createSpy('preTransform')
     const spy2 = jasmine.createSpy('postTransform')
+    const spy3 = jasmine.createSpy('endTransform')
+
     options.modules = options.modules.concat([{
       preTransformNode (el) {
         spy1(el.tag)
@@ -482,11 +484,15 @@ describe('parser', () => {
       postTransformNode (el) {
         expect(el.attrs.length).toBe(1)
         spy2(el.tag)
+      },
+      endTransformNode (el) {
+        spy3(el.tag)
       }
     }])
-    parse('<img v-pre src="hi">', options)
-    expect(spy1).toHaveBeenCalledWith('img')
-    expect(spy2).toHaveBeenCalledWith('img')
+    parse('<div id="foo">hi</div>', options)
+    expect(spy1).toHaveBeenCalledWith('div')
+    expect(spy2).toHaveBeenCalledWith('div')
+    expect(spy3).toHaveBeenCalledWith('div')
   })
 
   it('preserve whitespace in <pre> tag', function () {

@@ -56,6 +56,6 @@ export function getTagNamespace () {}
 
 export function isUnknownElement () {}
 
-export const isUnaryTag = makeMap('img, stroke-canvas')
+export const isUnaryTag = makeMap('input, img, stroke-canvas, audio, camera')
 
 export const canBeLeftOpenTag = makeMap('')

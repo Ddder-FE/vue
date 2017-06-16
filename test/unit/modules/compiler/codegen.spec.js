@@ -289,6 +289,21 @@ describe('codegen', () => {
     )
   })
 
+  it('generate events with custom modifiers', () => {
+    let customModifierSpy = jasmine.createSpy('custom').and.returnValue('__custom__syp;')
+    let genOptions = {
+      eventModifier: customModifierSpy
+    }
+
+    assertCodegen(
+      '<input @input.stop="onInput">',
+      `with(this){return _c('input',{on:{"input":function($event){__custom__syp;$event.stopPropagation();onInput($event)}}})}`,
+      genOptions
+    )
+
+    expect(customModifierSpy).toHaveBeenCalled();
+  })
+
   it('generate events with generic modifiers', () => {
     assertCodegen(
       '<input @input.stop="onInput">',

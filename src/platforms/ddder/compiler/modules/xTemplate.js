@@ -12,7 +12,18 @@ function endTransformNode(el: ASTElement, options: CompilerOptions) {
   let parent = el.parent;
   if (!parent) return;
 
-  let templateKey = el.attrsMap.id || 'default';
+  /*
+  * 由于xTemplate 的render 函数生成是在genData 阶段做的，
+  * 而vue 中，若ASTElement 被标记为plain=true 则会跳过genData 阶段，
+  * 所以，强制将父元素标记为plain=false
+  *
+  * 另外，现在的处理有点偷懒：
+  * 只将<script type="x-template"></script> 的父元素标记为plain=false，
+  * 影响是xTemplate 子模板只支持声明在组件template 的根子层级
+  * */
+  parent.plain = false;
+
+  let templateKey = el.attrsMap.id || '"default"';
   let templateValue = el.children[0].text;
 
   let parentTemplateMaps = parent.xTemplateMaps;
@@ -29,14 +40,14 @@ function endTransformNode(el: ASTElement, options: CompilerOptions) {
 function genData(el: ASTElement) {
   if (el.xTemplateMaps == null) return;
 
-  let data = 'xTemplateMaps: {';
+  let data = 'xTemplateMaps:{';
 
   let templateMapStrings = [];
 
   for (let templateKey in el.xTemplateMaps) {
     if (!el.xTemplateMaps.hasOwnProperty(templateKey)) continue;
 
-    templateMapStrings.push(`${templateKey}: ${el.xTemplateMaps[templateKey]}`);
+    templateMapStrings.push(`${templateKey}:${el.xTemplateMaps[templateKey]}`);
   }
 
   data += templateMapStrings.join(',');
