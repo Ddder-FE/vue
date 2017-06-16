@@ -47,4 +47,27 @@ describe('codegen', () => {
       `with(this){return _c('DIV',{xTemplateMaps:{"default":"default",foo:"foo",bar:"{{bar}}"}})}`
     )
   })
+
+  it('generate event for custom event', () => {
+    assertCodegen(
+      '<input @onActionEnd.custom="onInput">',
+      `with(this){return _c('INPUT',{on:{"custom":function($event){if(!($event instanceof CustomEvent) || $event.eventName.toLowerCase() !== 'onactionend')return null;onInput($event)}}})}`
+    )
+  })
+
+
+  it('generate events with generic modifiers', () => {
+    assertCodegen(
+      '<input @input.stop="onInput">',
+      `with(this){return _c('INPUT',{on:{"input":function($event){$event.cancelBubble = true;onInput($event)}}})}`
+    )
+    assertCodegen(
+      '<input @input.prevent="onInput">',
+      `with(this){return _c('INPUT',{on:{"input":function($event){$event.preventDefault = true;onInput($event)}}})}`
+    )
+    assertCodegen(
+      '<input @input.self="onInput">',
+      `with(this){return _c('INPUT',{on:{"input":function($event){if($event.eventTarget !== $event.originalTarget)return null;onInput($event)}}})}`
+    )
+  })
 })

@@ -38,7 +38,7 @@ function endTransformNode(el: ASTElement, options: CompilerOptions) {
 }
 
 function genData(el: ASTElement) {
-  if (el.xTemplateMaps == null) return;
+  if (el.xTemplateMaps == null) return '';
 
   let data = 'xTemplateMaps:{';
 
