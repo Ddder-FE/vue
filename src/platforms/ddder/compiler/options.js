@@ -10,6 +10,7 @@ import { genStaticKeys } from 'shared/util'
 
 import modules from './modules/index'
 import directives from './directives/index'
+import { eventModifier } from './codegen/events'
 
 import {
   isReservedTag,
@@ -21,6 +22,7 @@ import {
 export const baseOptions: CompilerOptions = {
   modules,
   directives,
+  eventModifier,
   isUnaryTag,
   mustUseProp,
   isReservedTag,

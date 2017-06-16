@@ -211,13 +211,15 @@ function toObject (arr) {
 
 /**
  * Perform no operation.
+ * Stubbing args to make Flow happy without leaving useless transpiled code
+ * with ...rest (https://flow.org/blog/2017/05/07/Strict-Function-Call-Arity/)
  */
-function noop () {}
+function noop (a, b, c) {}
 
 /**
  * Always return false.
  */
-var no = function () { return false; };
+var no = function (a, b, c) { return false; };
 
 /**
  * Return same value
@@ -371,6 +373,11 @@ var config = ({
   errorHandler: null,
 
   /**
+   * Warn handler for watcher warns
+   */
+  warnHandler: null,
+
+  /**
    * Ignore certain custom elements
    */
   ignoredElements: [],
@@ -434,10 +441,12 @@ if (process.env.NODE_ENV !== 'production') {
     .replace(/[-_]/g, ''); };
 
   warn = function (msg, vm) {
-    if (hasConsole && (!config.silent)) {
-      console.error("[Vue warn]: " + msg + (
-        vm ? generateComponentTrace(vm) : ''
-      ));
+    var trace = vm ? generateComponentTrace(vm) : '';
+
+    if (config.warnHandler) {
+      config.warnHandler.call(null, msg, vm, trace);
+    } else if (hasConsole && (!config.silent)) {
+      console.error(("[Vue warn]: " + msg + trace));
     }
   };
 
@@ -865,7 +874,7 @@ Observer.prototype.observeArray = function observeArray (items) {
  * Augment an target Object or Array by intercepting
  * the prototype chain using __proto__
  */
-function protoAugment (target, src) {
+function protoAugment (target, src, keys) {
   /* eslint-disable no-proto */
   target.__proto__ = src;
   /* eslint-enable no-proto */
@@ -2994,7 +3003,6 @@ function proxy (target, sourceKey, key) {
 function initState (vm) {
   vm._watchers = [];
   var opts = vm.$options;
-
   if (opts.props) { initProps(vm, opts.props); }
   if (opts.methods) { initMethods(vm, opts.methods); }
   if (opts.data) {
@@ -3003,7 +3011,6 @@ function initState (vm) {
     observe(vm._data = {}, true /* asRootData */);
   }
   if (opts.computed) { initComputed(vm, opts.computed); }
-
   if (opts.watch) { initWatch(vm, opts.watch); }
 }
 
@@ -4839,11 +4846,11 @@ function createPatchFunction (backend) {
     insert(parentElm, vnode.elm, refElm);
   }
 
-  function insert (parent, elm, ref) {
+  function insert (parent, elm, ref$$1) {
     if (isDef(parent)) {
-      if (isDef(ref)) {
-        if (ref.parentNode === parent) {
-          nodeOps.insertBefore(parent, elm, ref);
+      if (isDef(ref$$1)) {
+        if (ref$$1.parentNode === parent) {
+          nodeOps.insertBefore(parent, elm, ref$$1);
         }
       } else {
         nodeOps.appendChild(parent, elm);
@@ -5551,9 +5558,11 @@ Vue$2.prototype.$mount = function (el, hydrating) {
 /*  */
 
 // decode method for ddder
-function decode(html) {
-  return html;
-}
+var he = {
+  decode: function decode (html) {
+    return html
+  }
+};
 
 /*  */
 
@@ -5644,8 +5653,8 @@ function decodeAttr (value, shouldDecodeNewlines) {
 function parseHTML (html, options) {
   var stack = [];
   var expectHTML = options.expectHTML;
-  var isUnaryTag$$1 = options.isUnaryTag || no;
-  var canBeLeftOpenTag$$1 = options.canBeLeftOpenTag || no;
+  var isUnaryTag = options.isUnaryTag || no;
+  var canBeLeftOpenTag = options.canBeLeftOpenTag || no;
   var index = 0;
   var last, lastTag;
   while (html) {
@@ -5794,12 +5803,12 @@ function parseHTML (html, options) {
       if (lastTag === 'p' && isNonPhrasingTag(tagName)) {
         parseEndTag(lastTag);
       }
-      if (canBeLeftOpenTag$$1(tagName) && lastTag === tagName) {
+      if (canBeLeftOpenTag(tagName) && lastTag === tagName) {
         parseEndTag(tagName);
       }
     }
 
-    var unary = isUnaryTag$$1(tagName) || tagName === 'html' && lastTag === 'head' || !!unarySlash;
+    var unary = isUnaryTag(tagName) || tagName === 'html' && lastTag === 'head' || !!unarySlash;
 
     var l = match.attrs.length;
     var attrs = new Array(l);
@@ -6187,6 +6196,13 @@ function addHandler (
       'Passive handler can\'t prevent default event.'
     );
   }
+
+  if (modifiers && modifiers.custom) {
+    delete modifiers.custom;
+    modifiers.eventName = name;
+    name = 'custom';
+  }
+
   // check capture modifier
   if (modifiers && modifiers.capture) {
     delete modifiers.capture;
@@ -6263,7 +6279,7 @@ var argRE = /:(.*)$/;
 var bindRE = /^:|^v-bind:/;
 var modifierRE = /\.[^.]+/g;
 
-var decodeHTMLCached = cached(decode);
+var decodeHTMLCached = cached(he.decode);
 
 // configurable state
 var warn$1;
@@ -7002,7 +7018,8 @@ var modifierCode = {
 function genHandlers (
   events,
   isNative,
-  warn
+  warn,
+  eventModifier
 ) {
   var res = isNative ? 'nativeOn:{' : 'on:{';
   for (var name in events) {
@@ -7017,21 +7034,22 @@ function genHandlers (
         "do not actually fire \"click\" events."
       );
     }
-    res += "\"" + name + "\":" + (genHandler(name, handler)) + ",";
+    res += "\"" + name + "\":" + (genHandler(name, handler, eventModifier)) + ",";
   }
   return res.slice(0, -1) + '}'
 }
 
 function genHandler (
   name,
-  handler
+  handler,
+  eventModifier
 ) {
   if (!handler) {
     return 'function(){}'
   }
 
   if (Array.isArray(handler)) {
-    return ("[" + (handler.map(function (handler) { return genHandler(name, handler); }).join(',')) + "]")
+    return ("[" + (handler.map(function (handler) { return genHandler(name, handler, eventModifier); }).join(',')) + "]")
   }
 
   var isMethodPath = simplePathRE.test(handler.value);
@@ -7045,6 +7063,12 @@ function genHandler (
     var code = '';
     var genModifierCode = '';
     var keys = [];
+
+    if (eventModifier) {
+      var customModifierCode = eventModifier(name, handler.modifiers);
+      if (customModifierCode) { genModifierCode += customModifierCode; }
+    }
+
     for (var key in handler.modifiers) {
       if (modifierCode[key]) {
         genModifierCode += modifierCode[key];
@@ -7110,6 +7134,7 @@ var CodegenState = function CodegenState (options) {
   this.directives = extend(extend({}, baseDirectives), options.directives);
   var isReservedTag = options.isReservedTag || no;
   this.maybeComponent = function (el) { return !isReservedTag(el.tag); };
+  this.eventModifier = options.eventModifier;
   this.onceId = 0;
   this.staticRenderFns = [];
 };
@@ -7304,10 +7329,10 @@ function genData (el, state) {
   }
   // event handlers
   if (el.events) {
-    data += (genHandlers(el.events, false, state.warn)) + ",";
+    data += (genHandlers(el.events, false, state.warn, state.eventModifier)) + ",";
   }
   if (el.nativeEvents) {
-    data += (genHandlers(el.nativeEvents, true, state.warn)) + ",";
+    data += (genHandlers(el.nativeEvents, true, state.warn, state.eventModifier)) + ",";
   }
   // slot target
   if (el.slotTarget) {
@@ -7872,6 +7897,40 @@ var modules$1 = [ tag, xTemplate$1 ];
 var directives$1 = [];
 
 /**
+ * Created by zhiyuan.huang@rdder.com on 17/6/16.
+ */
+/*  */
+
+var genGuard$1 = function (condition) { return ("if(" + condition + ")return null;"); };
+
+// todo: need to normalize custom event name
+var customEventName = function (name) { return genGuard$1(("!($event instanceof CustomEvent) || $event.eventName.toLowerCase() !== " + (name.toLowerCase()))); };
+
+var modifierCode$1 = {
+  stop: '$event.cancelBubble = true;',
+  prevent: '$event.preventDefault = true;',
+  self: genGuard$1("$event.eventTarget !== $event.originalTarget")
+};
+
+function eventModifier(name, modifiers) {
+  var result = '';
+
+  if (name.match(/custom$/i)) {
+    result += customEventName(modifiers.eventName);
+    delete modifiers.eventName;
+  }
+
+  for (var key in modifiers) {
+    if (modifierCode$1[key]) {
+      result += modifierCode$1[key];
+      delete modifiers[key];
+    }
+  }
+
+  return result
+}
+
+/**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
@@ -7880,6 +7939,7 @@ var directives$1 = [];
 var baseOptions = {
   modules: modules$1,
   directives: directives$1,
+  eventModifier: eventModifier,
   isUnaryTag: isUnaryTag,
   mustUseProp: mustUseProp,
   isReservedTag: isReservedTag,

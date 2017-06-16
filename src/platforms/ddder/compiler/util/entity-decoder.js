@@ -6,6 +6,8 @@
 'use strict';
 
 // decode method for ddder
-export function decode(html: string): string {
-  return html;
+export default {
+  decode (html: string): string {
+    return html
+  }
 }

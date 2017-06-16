@@ -53,6 +53,13 @@ export function addHandler (
       'Passive handler can\'t prevent default event.'
     )
   }
+
+  if (modifiers && modifiers.custom) {
+    delete modifiers.custom;
+    modifiers.eventName = name;
+    name = 'custom';
+  }
+
   // check capture modifier
   if (modifiers && modifiers.capture) {
     delete modifiers.capture

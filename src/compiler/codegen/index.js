@@ -18,6 +18,7 @@ export class CodegenState {
   maybeComponent: (el: ASTElement) => boolean;
   onceId: number;
   staticRenderFns: Array<string>;
+  eventModifier: Function;
 
   constructor (options: CompilerOptions) {
     this.options = options
@@ -27,6 +28,7 @@ export class CodegenState {
     this.directives = extend(extend({}, baseDirectives), options.directives)
     const isReservedTag = options.isReservedTag || no
     this.maybeComponent = (el: ASTElement) => !isReservedTag(el.tag)
+    this.eventModifier = options.eventModifier
     this.onceId = 0
     this.staticRenderFns = []
   }
@@ -233,10 +235,10 @@ export function genData (el: ASTElement, state: CodegenState): string {
   }
   // event handlers
   if (el.events) {
-    data += `${genHandlers(el.events, false, state.warn)},`
+    data += `${genHandlers(el.events, false, state.warn, state.eventModifier)},`
   }
   if (el.nativeEvents) {
-    data += `${genHandlers(el.nativeEvents, true, state.warn)},`
+    data += `${genHandlers(el.nativeEvents, true, state.warn, state.eventModifier)},`
   }
   // slot target
   // only for non-scoped slots

@@ -37,7 +37,8 @@ const modifierCode: { [key: string]: string } = {
 export function genHandlers (
   events: ASTElementHandlers,
   isNative: boolean,
-  warn: Function
+  warn: Function,
+  eventModifier?: Function
 ): string {
   let res = isNative ? 'nativeOn:{' : 'on:{'
   for (const name in events) {
@@ -52,21 +53,22 @@ export function genHandlers (
         `do not actually fire "click" events.`
       )
     }
-    res += `"${name}":${genHandler(name, handler)},`
+    res += `"${name}":${genHandler(name, handler, eventModifier)},`
   }
   return res.slice(0, -1) + '}'
 }
 
 function genHandler (
   name: string,
-  handler: ASTElementHandler | Array<ASTElementHandler>
+  handler: ASTElementHandler | Array<ASTElementHandler>,
+  eventModifier?: Function
 ): string {
   if (!handler) {
     return 'function(){}'
   }
 
   if (Array.isArray(handler)) {
-    return `[${handler.map(handler => genHandler(name, handler)).join(',')}]`
+    return `[${handler.map(handler => genHandler(name, handler, eventModifier)).join(',')}]`
   }
 
   const isMethodPath = simplePathRE.test(handler.value)
@@ -80,6 +82,12 @@ function genHandler (
     let code = ''
     let genModifierCode = ''
     const keys = []
+
+    if (eventModifier) {
+      let customModifierCode = eventModifier(name, handler.modifiers)
+      if (customModifierCode) genModifierCode += customModifierCode
+    }
+
     for (const key in handler.modifiers) {
       if (modifierCode[key]) {
         genModifierCode += modifierCode[key]

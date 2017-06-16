@@ -23,7 +23,9 @@ declare type CompilerOptions = {
   delimiters?: [string, string]; // template delimiters
 
   // allow user kept comments
-  comments?: boolean
+  comments?: boolean;
+
+  eventModifier?: (name: string, modifiers: ?Object) => ?string;
 };
 
 declare type CompiledResult = {
@@ -46,7 +48,7 @@ declare type ModuleOptions = {
   staticKeys?: Array<string>; // AST properties to be considered static
 };
 
-declare type ASTModifiers = { [key: string]: boolean };
+declare type ASTModifiers = { [key: string]: boolean | string };
 declare type ASTIfCondition = { exp: ?string; block: ASTElement };
 declare type ASTIfConditions = Array<ASTIfCondition>;
 
