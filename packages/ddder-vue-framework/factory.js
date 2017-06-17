@@ -100,6 +100,11 @@ function makeMap (
 var isBuiltInTag = makeMap('slot,component', true);
 
 /**
+ * Check if a attribute is a reserved attribute.
+ */
+var isReservedAttribute = makeMap('key,ref,slot,is');
+
+/**
  * Remove an item from an array
  */
 function remove (arr, item) {
@@ -983,7 +988,7 @@ function defineReactive$$1 (
  * already exist.
  */
 function set (target, key, val) {
-  if (Array.isArray(target) && typeof key === 'number') {
+  if (Array.isArray(target) && (typeof key === 'number' || /^\d+$/.test(key))) {
     target.length = Math.max(target.length, key);
     target.splice(key, 1, val);
     return val
@@ -1215,6 +1220,7 @@ strats.watch = function (parentVal, childVal) {
  */
 strats.props =
 strats.methods =
+strats.inject =
 strats.computed = function (parentVal, childVal) {
   if (!childVal) { return Object.create(parentVal || null) }
   if (!parentVal) { return childVal }
@@ -1281,6 +1287,19 @@ function normalizeProps (options) {
 }
 
 /**
+ * Normalize all injections into Object-based format
+ */
+function normalizeInject (options) {
+  var inject = options.inject;
+  if (Array.isArray(inject)) {
+    var normalized = options.inject = {};
+    for (var i = 0; i < inject.length; i++) {
+      normalized[inject[i]] = inject[i];
+    }
+  }
+}
+
+/**
  * Normalize raw function directives into object format.
  */
 function normalizeDirectives (options) {
@@ -1313,6 +1332,7 @@ function mergeOptions (
   }
 
   normalizeProps(child);
+  normalizeInject(child);
   normalizeDirectives(child);
   var extendsFrom = child.extends;
   if (extendsFrom) {
@@ -3014,12 +3034,6 @@ function initState (vm) {
   if (opts.watch) { initWatch(vm, opts.watch); }
 }
 
-var isReservedProp = {
-  key: 1,
-  ref: 1,
-  slot: 1
-};
-
 function checkOptionType (vm, name) {
   var option = vm.$options[name];
   if (!isPlainObject(option)) {
@@ -3044,7 +3058,7 @@ function initProps (vm, propsOptions) {
     var value = validateProp(key, propsOptions, propsData, vm);
     /* istanbul ignore else */
     if (process.env.NODE_ENV !== 'production') {
-      if (isReservedProp[key] || config.isReservedAttr(key)) {
+      if (isReservedAttribute(key) || config.isReservedAttr(key)) {
         warn(
           ("\"" + key + "\" is a reserved attribute and cannot be used as component prop."),
           vm
@@ -3330,18 +3344,14 @@ function initInjections (vm) {
 function resolveInject (inject, vm) {
   if (inject) {
     // inject is :any because flow is not smart enough to figure out cached
-    // isArray here
-    var isArray = Array.isArray(inject);
     var result = Object.create(null);
-    var keys = isArray
-      ? inject
-      : hasSymbol
+    var keys = hasSymbol
         ? Reflect.ownKeys(inject)
         : Object.keys(inject);
 
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
-      var provideKey = isArray ? key : inject[key];
+      var provideKey = inject[key];
       var source = vm;
       while (source) {
         if (source._provided && provideKey in source._provided) {
@@ -3551,8 +3561,14 @@ function createComponent (
 
   if (isTrue(Ctor.options.abstract)) {
     // abstract components do not keep anything
-    // other than props & listeners
+    // other than props & listeners & slot
+
+    // work around flow
+    var slot = data.slot;
     data = {};
+    if (slot) {
+      data.slot = slot;
+    }
   }
 
   // merge component management hooks onto the placeholder node
@@ -3668,6 +3684,10 @@ function _createElement (
       context
     );
     return createEmptyVNode()
+  }
+  // object syntax in v-bind
+  if (isDef(data) && isDef(data.is)) {
+    tag = data.is;
   }
   if (!tag) {
     // in case of component :is set to falsy value
@@ -3863,7 +3883,11 @@ function bindObjectProps (
       }
       var hash;
       for (var key in value) {
-        if (key === 'class' || key === 'style') {
+        if (
+          key === 'class' ||
+          key === 'style' ||
+          isReservedAttribute(key)
+        ) {
           hash = data;
         } else {
           var type = data.attrs && data.attrs.type;
@@ -5526,7 +5550,7 @@ function getTagNamespace () {}
 
 function isUnknownElement () {}
 
-var isUnaryTag = makeMap('img, stroke-canvas');
+var isUnaryTag = makeMap('input, img, stroke-canvas, audio, camera');
 
 var canBeLeftOpenTag = makeMap('');
 
@@ -7846,7 +7870,18 @@ function endTransformNode(el, options) {
   var parent = el.parent;
   if (!parent) { return; }
 
-  var templateKey = el.attrsMap.id || 'default';
+  /*
+  * 由于xTemplate 的render 函数生成是在genData 阶段做的，
+  * 而vue 中，若ASTElement 被标记为plain=true 则会跳过genData 阶段，
+  * 所以，强制将父元素标记为plain=false
+  *
+  * 另外，现在的处理有点偷懒：
+  * 只将<script type="x-template"></script> 的父元素标记为plain=false，
+  * 影响是xTemplate 子模板只支持声明在组件template 的根子层级
+  * */
+  parent.plain = false;
+
+  var templateKey = el.attrsMap.id || '"default"';
   var templateValue = el.children[0].text;
 
   var parentTemplateMaps = parent.xTemplateMaps;
@@ -7861,16 +7896,16 @@ function endTransformNode(el, options) {
 }
 
 function genData$1(el) {
-  if (el.xTemplateMaps == null) { return; }
+  if (el.xTemplateMaps == null) { return ''; }
 
-  var data = 'xTemplateMaps: {';
+  var data = 'xTemplateMaps:{';
 
   var templateMapStrings = [];
 
   for (var templateKey in el.xTemplateMaps) {
     if (!el.xTemplateMaps.hasOwnProperty(templateKey)) { continue; }
 
-    templateMapStrings.push((templateKey + ": " + (el.xTemplateMaps[templateKey])));
+    templateMapStrings.push((templateKey + ":" + (el.xTemplateMaps[templateKey])));
   }
 
   data += templateMapStrings.join(',');
@@ -7904,7 +7939,7 @@ var directives$1 = [];
 var genGuard$1 = function (condition) { return ("if(" + condition + ")return null;"); };
 
 // todo: need to normalize custom event name
-var customEventName = function (name) { return genGuard$1(("!($event instanceof CustomEvent) || $event.eventName.toLowerCase() !== " + (name.toLowerCase()))); };
+var customEventName = function (name) { return genGuard$1(("!($event instanceof CustomEvent) || $event.eventName.toLowerCase() !== '" + (name.toLowerCase()) + "'")); };
 
 var modifierCode$1 = {
   stop: '$event.cancelBubble = true;',
