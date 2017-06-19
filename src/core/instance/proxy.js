@@ -51,6 +51,10 @@ if (process.env.NODE_ENV !== 'production') {
         warnNonPresent(target, key)
       }
       return has || !isAllowed
+    },
+    // older version spidermonkey engine has bug about proxy, which shall specify 'get' and 'has' proxy meanwhile
+    get (target, key) {
+      return target[key];
     }
   }
 
