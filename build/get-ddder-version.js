@@ -2,11 +2,11 @@
  * Created by zhiyuan.huang@rdder.com on 17/6/7.
  */
 
-'use strict';
+'use strict'
 
 const coreVersion = require('../package.json').version
 
-let ddderVersion = require('../packages/ddder-vue-framework/package.json').version
+const ddderVersion = require('../packages/ddder-vue-framework/package.json').version
 let ddderBaseVersion = ddderVersion.match(/^[\d.]+/)[0]
 let ddderSubVersion = Number(ddderVersion.match(/-ddder\.(\d+)$/)[1])
 

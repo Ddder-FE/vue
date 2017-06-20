@@ -1,10 +1,7 @@
 /**
+ * @flow
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
-
-/* @flow */
-
-'use strict';
 
 import { genStaticKeys } from 'shared/util'
 
@@ -16,7 +13,7 @@ import {
   isReservedTag,
   isUnaryTag,
   mustUseProp,
-  getTagNamespace,
+  getTagNamespace
 } from '../util/index'
 
 export const baseOptions: CompilerOptions = {

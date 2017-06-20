@@ -1,9 +1,9 @@
 /**
+ * @flow
  * Created by zhiyuan.huang@rdder.com on 17/6/16.
  */
-/* @flow */
 
-'use strict';
+'use strict'
 
 const genGuard = condition => `if(${condition})return null;`
 
@@ -16,11 +16,11 @@ const modifierCode: { [key: string]: string } = {
   self: genGuard(`$event.eventTarget !== $event.originalTarget`)
 }
 
-export function eventModifier(name: string, modifiers?: Object) {
+export function eventModifier (name: string, modifiers: Object) {
   let result = ''
 
   if (name.match(/custom$/i)) {
-    result += customEventName(modifiers.eventName);
+    result += customEventName(modifiers.eventName)
     delete modifiers.eventName
   }
 

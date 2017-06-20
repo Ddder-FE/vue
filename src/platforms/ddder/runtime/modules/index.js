@@ -2,7 +2,7 @@
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-'use strict';
+'use strict'
 
 import xTemplate from './xTemplate'
 import attrs from './attrs'

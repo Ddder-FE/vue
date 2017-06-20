@@ -29,7 +29,7 @@ import {
 
 export const emptyNode = new VNode('', {}, [])
 
-const hooks = ['create', 'activate', 'update', 'remove', 'destroy']
+const hooks = ['precreate', 'create', 'activate', 'update', 'remove', 'destroy']
 
 function sameVnode (a, b) {
   return (
@@ -164,6 +164,9 @@ export function createPatchFunction (backend) {
           insert(parentElm, vnode.elm, refElm)
         }
       } else {
+        if (isDef(data)) {
+          invokePreCreateHooks(vnode, insertedVnodeQueue)
+        }
         createChildren(vnode, children, insertedVnodeQueue)
         if (isDef(data)) {
           invokeCreateHooks(vnode, insertedVnodeQueue)
@@ -271,6 +274,16 @@ export function createPatchFunction (backend) {
       vnode = vnode.componentInstance._vnode
     }
     return isDef(vnode.tag)
+  }
+
+  function invokePreCreateHooks (vnode) {
+    for (let i = 0; i < cbs.precreate.length; ++i) {
+      cbs.precreate[i](emptyNode, vnode)
+    }
+    i = vnode.data.hook // Reuse variable
+    if (isDef(i)) {
+      if (isDef(i.precreate)) i.precreate(emptyNode, vnode)
+    }
   }
 
   function invokeCreateHooks (vnode, insertedVnodeQueue) {

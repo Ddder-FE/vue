@@ -300,6 +300,25 @@ describe('vdom patch: hooks', () => {
     expect(destroyed).toBe(5)
   })
 
+  it('should call `precreate` listener before inserted into parent and before children', () => {
+    const result = []
+    function precreate (empty, vnode) {
+      expect(vnode.elm.children.length).toBe(0)
+      expect(vnode.elm.parentNode).toBe(null)
+      result.push(vnode)
+    }
+    const vnode1 = new VNode('div', {}, [
+      new VNode('span', {}, undefined, 'first sibling'),
+      new VNode('div', { hook: { precreate }}, [
+        new VNode('span', {}, undefined, 'child 1'),
+        new VNode('span', {}, undefined, 'child 2')
+      ]),
+      new VNode('span', {}, undefined, 'can\'t touch me')
+    ])
+    patch(vnode0, vnode1)
+    expect(result.length).toBe(1)
+  })
+
   it('should call `create` listener before inserted into parent but after children', () => {
     const result = []
     function create (empty, vnode) {

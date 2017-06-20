@@ -23,7 +23,7 @@ function init (cfg) {
   renderer.Element = cfg.Element;
 }
 
-function reset() {
+function reset () {
   clear(instances);
   clear(modules);
   clear(components);
@@ -32,7 +32,7 @@ function reset() {
   delete renderer.Comment;
 }
 
-function clear(obj) {
+function clear (obj) {
   for (var key in obj) {
     delete obj[key];
   }

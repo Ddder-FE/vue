@@ -1,9 +1,7 @@
 /**
+ * @flow
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
-/* @flow */
-
-'use strict';
 
 import { makeMap } from 'shared/util'
 
@@ -19,11 +17,11 @@ export const reservedTags = [
   'script'
 ]
 
-export function makeReservedTemplateTags() : Array<string> {
-  let tags = []
+export function makeReservedTemplateTags (): string {
+  const tags = []
 
   for (let i = 0; i < reservedTags.length; i++) {
-    let tag = reservedTags[i];
+    let tag = reservedTags[i]
 
     if (Array.isArray(tag)) tag = tag[0]
 
@@ -33,11 +31,11 @@ export function makeReservedTemplateTags() : Array<string> {
   return tags.join(',')
 }
 
-export function mapReservedTags() : {string : string} {
-  let map = {}
+export function mapReservedTags (): {[type: string]: string} {
+  const map = {}
 
   for (let i = 0; i < reservedTags.length; i++) {
-    let tag = reservedTags[i];
+    const tag = reservedTags[i]
 
     if (Array.isArray(tag)) map[tag[0]] = tag[1]
     else if (typeof tag === 'string') map[tag] = tag
@@ -50,7 +48,7 @@ export const isReservedTag = makeMap(makeReservedTemplateTags())
 
 export function isPreTag () { return false }
 
-export function mustUseProp () {}
+export function mustUseProp () { return false }
 
 export function getTagNamespace () {}
 

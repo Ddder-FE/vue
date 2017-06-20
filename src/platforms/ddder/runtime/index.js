@@ -4,19 +4,19 @@
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-'use strict';
+'use strict'
 
-import Vue from 'core/index';
-import { patch } from 'ddder/runtime/patch';
-import { mountComponent } from 'core/instance/lifecycle';
-import platformDirectives from 'ddder/runtime/directives/index';
-import platformComponents from 'ddder/runtime/components/index';
+import Vue from 'core/index'
+import { patch } from 'ddder/runtime/patch'
+import { mountComponent } from 'core/instance/lifecycle'
+import platformDirectives from 'ddder/runtime/directives/index'
+import platformComponents from 'ddder/runtime/components/index'
 
 import {
   mustUseProp,
   isReservedTag,
   isUnknownElement
-} from 'ddder/util/index';
+} from 'ddder/util/index'
 
 // install platform specific utils
 Vue.config.mustUseProp = mustUseProp

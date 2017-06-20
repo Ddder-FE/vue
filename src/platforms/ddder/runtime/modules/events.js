@@ -1,6 +1,6 @@
 /* @flow */
 
-import { isDef, isUndef } from 'shared/util'
+import { isUndef } from 'shared/util'
 import { updateListeners } from 'core/vdom/helpers/index'
 
 function normalizeEvents (on) {}

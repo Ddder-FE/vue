@@ -16,6 +16,15 @@ declare type MountedComponentVNode = {
   data: VNodeData;
 };
 
+declare var renderer : {
+  instances: Array<Object>;
+  modules: { [name: string]: Object | boolean | Function };
+  components: { [name: string]: Object | boolean | Function };
+  Document: Function;
+  Element: Function;
+};
+
+
 // interface for vnodes in update modules
 declare type VNodeWithData = {
   tag: string;

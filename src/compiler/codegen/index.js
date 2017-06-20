@@ -18,7 +18,7 @@ export class CodegenState {
   maybeComponent: (el: ASTElement) => boolean;
   onceId: number;
   staticRenderFns: Array<string>;
-  eventModifier: Function;
+  eventModifier: ?Function;
 
   constructor (options: CompilerOptions) {
     this.options = options

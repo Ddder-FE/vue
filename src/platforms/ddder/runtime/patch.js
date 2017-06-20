@@ -4,7 +4,7 @@
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-'use strict';
+'use strict'
 
 import * as nodeOps from 'ddder/runtime/node-ops'
 import { createPatchFunction } from 'core/vdom/patch'

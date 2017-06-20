@@ -2,13 +2,12 @@
  * Created by zhiyuan.huang@rdder.com on 17/6/16.
  */
 
-'use strict';
+'use strict'
 
 import { parse } from 'compiler/parser/index'
 import { optimize } from 'compiler/optimizer'
 import { generate } from 'compiler/codegen'
 import { isObject } from 'shared/util'
-import { isReservedTag } from 'ddder/util/index'
 import { baseOptions } from 'ddder/compiler/options'
 
 function assertCodegen (template, generatedCode, ...args) {
@@ -54,7 +53,6 @@ describe('codegen', () => {
       `with(this){return _c('INPUT',{on:{"custom":function($event){if(!($event instanceof CustomEvent) || $event.eventName.toLowerCase() !== 'onactionend')return null;onInput($event)}}})}`
     )
   })
-
 
   it('generate events with generic modifiers', () => {
     assertCodegen(

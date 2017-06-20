@@ -785,15 +785,9 @@ var arrayMethods = Object.create(arrayProto);[
   // cache original method
   var original = arrayProto[method];
   def(arrayMethods, method, function mutator () {
-    var arguments$1 = arguments;
+    var args = [], len = arguments.length;
+    while ( len-- ) args[ len ] = arguments[ len ];
 
-    // avoid leaking arguments:
-    // http://jsperf.com/closure-with-arguments
-    var i = arguments.length;
-    var args = new Array(i);
-    while (i--) {
-      args[i] = arguments$1[i];
-    }
     var result = original.apply(this, args);
     var ob = this.__ob__;
     var inserted;
@@ -1610,7 +1604,7 @@ if (process.env.NODE_ENV !== 'production') {
     },
     // older version spidermonkey engine has bug about proxy, which shall specify 'get' and 'has' proxy meanwhile
     get: function get (target, key) {
-      return target[key];
+      return target[key]
     }
   };
 
@@ -4547,7 +4541,6 @@ Object.defineProperty(Vue$2.prototype, '$ssrContext', {
 
 Vue$2.version = '2.3.3';
 
-/*  */
 /* globals renderer */
 // renderer is injected by ddder factory wrapper
 
@@ -4556,11 +4549,11 @@ Vue$2.version = '2.3.3';
  */
 
 function createElement$1 (tagName) {
-  return new renderer.Element(tagName);
+  return new renderer.Element(tagName)
 }
 
 // we use div to mock text node
-function createTextNode(text) {
+function createTextNode (text) {
   var mockTextNode = createElement$1('text');
   setTextContent(mockTextNode, text);
 
@@ -4568,42 +4561,42 @@ function createTextNode(text) {
 }
 
 // todo: ddder do not support comment node
-function createComment(text) {
+function createComment (text) {
   var mockCommentNode = createElement$1('comment');
   setTextContent(mockCommentNode, text);
 
   return mockCommentNode
 }
 
-function insertBefore(parentNode, newNode, referenceNode) {
+function insertBefore (parentNode, newNode, referenceNode) {
   parentNode.insertBefore(newNode, referenceNode);
 }
 
-function removeChild(node, child) {
+function removeChild (node, child) {
   node.removeChild(child);
 }
 
-function appendChild(node, child) {
+function appendChild (node, child) {
   node.appendChild(child);
 }
 
-function parentNode(node) {
+function parentNode (node) {
   return node.parentNode
 }
 
-function nextSibling(node) {
+function nextSibling (node) {
   return node.nextSibling
 }
 
-function tagName(node) {
+function tagName (node) {
   return node.tagName
 }
 
-function setTextContent(node, text) {
+function setTextContent (node, text) {
   node.textContent = text;
 }
 
-function setAttribute(node, key, val) {
+function setAttribute (node, key, val) {
   node.setAttr(key, val);
 }
 
@@ -4681,7 +4674,7 @@ function registerRef (vnode, isRemoval) {
 
 var emptyNode = new VNode('', {}, []);
 
-var hooks = ['create', 'activate', 'update', 'remove', 'destroy'];
+var hooks = ['precreate', 'create', 'activate', 'update', 'remove', 'destroy'];
 
 function sameVnode (a, b) {
   return (
@@ -4794,6 +4787,9 @@ function createPatchFunction (backend) {
 
       /* istanbul ignore if */
       {
+        if (isDef(data)) {
+          invokePreCreateHooks(vnode, insertedVnodeQueue);
+        }
         createChildren(vnode, children, insertedVnodeQueue);
         if (isDef(data)) {
           invokeCreateHooks(vnode, insertedVnodeQueue);
@@ -4901,6 +4897,16 @@ function createPatchFunction (backend) {
       vnode = vnode.componentInstance._vnode;
     }
     return isDef(vnode.tag)
+  }
+
+  function invokePreCreateHooks (vnode) {
+    for (var i$1 = 0; i$1 < cbs.precreate.length; ++i$1) {
+      cbs.precreate[i$1](emptyNode, vnode);
+    }
+    i = vnode.data.hook; // Reuse variable
+    if (isDef(i)) {
+      if (isDef(i.precreate)) { i.precreate(emptyNode, vnode); }
+    }
   }
 
   function invokeCreateHooks (vnode, insertedVnodeQueue) {
@@ -5434,12 +5440,11 @@ var baseModules = [
 ];
 
 /**
+ * 
  * Created by zhiyuan.huang@rdder.com on 17/6/7.
  */
 
-/*  */
-
-function updateInstanceXTemplates(oldVNode, vnode) {
+function updateInstanceXTemplates (oldVNode, vnode) {
   var data = vnode.data;
   var oldData = oldVNode.data;
 
@@ -5459,14 +5464,14 @@ function updateInstanceXTemplates(oldVNode, vnode) {
   // 将各后代node 中的xTemplateMap 都注册到Vue 组件实例中
   // 注意，这里存在模板id 覆盖的问题，暂时不给出解决方案
   for (var templateKey in nodeXTemplateMaps) {
-    if (!nodeXTemplateMaps.hasOwnProperty(templateKey)) { continue; }
+    if (!nodeXTemplateMaps.hasOwnProperty(templateKey)) { continue }
 
     instanceXTemplateMaps[templateKey] = nodeXTemplateMaps[templateKey];
   }
 }
 
 var xTemplate = {
-  create: updateInstanceXTemplates,
+  precreate: updateInstanceXTemplates,
   update: updateInstanceXTemplates
 };
 
@@ -5697,9 +5702,9 @@ var platformDirectives = [];
 var platformComponents = [];
 
 /**
+ * 
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
-/*  */
 
 var reservedTags = [
   ['node', 'Node'],
@@ -5713,7 +5718,7 @@ var reservedTags = [
   'script'
 ];
 
-function makeReservedTemplateTags()  {
+function makeReservedTemplateTags () {
   var tags = [];
 
   for (var i = 0; i < reservedTags.length; i++) {
@@ -5727,7 +5732,7 @@ function makeReservedTemplateTags()  {
   return tags.join(',')
 }
 
-function mapReservedTags()  {
+function mapReservedTags () {
   var map = {};
 
   for (var i = 0; i < reservedTags.length; i++) {
@@ -5744,7 +5749,7 @@ var isReservedTag$1 = makeMap(makeReservedTemplateTags());
 
 
 
-function mustUseProp$1 () {}
+function mustUseProp$1 () { return false }
 
 function getTagNamespace$1 () {}
 
@@ -5777,9 +5782,9 @@ Vue$2.prototype.$mount = function (el, hydrating) {
 };
 
 /**
+ * 
  * Created by zhiyuan.huang@rdder.com on 17/6/9.
  */
-/*  */
 
 // decode method for ddder
 var he = {
@@ -8041,34 +8046,33 @@ var createCompiler = createCompilerCreator(function baseCompile (
 });
 
 /**
+ * 
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
-/*  */
 
 var reservedTagsMap = mapReservedTags();
 
-function preTransformNode(el) {
+function preTransformNode (el) {
   if (reservedTagsMap.hasOwnProperty(el.tag)) {
     el.tag = reservedTagsMap[el.tag];
   }
 }
-
 
 var tag = {
   preTransformNode: preTransformNode
 };
 
 /**
+ * 
  * Created by zhiyuan.huang@rdder.com on 17/6/7.
  */
-/*  */
 
-function endTransformNode(el, options) {
-  if (el.tag !== 'script') { return; }
-  if (el.attrsMap.type !== 'x-template') { return; }
+function endTransformNode (el, options) {
+  if (el.tag !== 'script') { return }
+  if (el.attrsMap.type !== 'x-template') { return }
 
   var parent = el.parent;
-  if (!parent) { return; }
+  if (!parent) { return }
 
   /*
   * 由于xTemplate 的render 函数生成是在genData 阶段做的，
@@ -8095,23 +8099,29 @@ function endTransformNode(el, options) {
   parent.children.splice(index, 1);
 }
 
-function genData$1(el) {
-  if (el.xTemplateMaps == null) { return ''; }
+function genData$1 (el) {
+  if (!el.xTemplateMaps) {
+    return ''
+  } else {
+
+  }
+  if (el.xTemplateMaps == null) { return '' }
 
   var data = 'xTemplateMaps:{';
 
   var templateMapStrings = [];
 
   for (var templateKey in el.xTemplateMaps) {
-    if (!el.xTemplateMaps.hasOwnProperty(templateKey)) { continue; }
+    if (!el.xTemplateMaps.hasOwnProperty(templateKey)) { continue }
 
-    templateMapStrings.push((templateKey + ":" + (el.xTemplateMaps[templateKey])));
+    // we know "el.xTemplateMaps" can not be undefined or null, but flow doesn't
+    el.xTemplateMaps && templateMapStrings.push((templateKey + ":" + (el.xTemplateMaps[templateKey])));
   }
 
   data += templateMapStrings.join(',');
 
   data += '},';
-  return data;
+  return data
 }
 
 var xTemplate$1 = {
@@ -8123,7 +8133,7 @@ var xTemplate$1 = {
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-var modules$1 = [ tag, xTemplate$1 ];
+var modules$1 = [tag, xTemplate$1];
 
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
@@ -8132,9 +8142,9 @@ var modules$1 = [ tag, xTemplate$1 ];
 var directives$1 = [];
 
 /**
+ * 
  * Created by zhiyuan.huang@rdder.com on 17/6/16.
  */
-/*  */
 
 var genGuard$1 = function (condition) { return ("if(" + condition + ")return null;"); };
 
@@ -8147,7 +8157,7 @@ var modifierCode$1 = {
   self: genGuard$1("$event.eventTarget !== $event.originalTarget")
 };
 
-function eventModifier(name, modifiers) {
+function eventModifier (name, modifiers) {
   var result = '';
 
   if (name.match(/custom$/i)) {
@@ -8166,10 +8176,9 @@ function eventModifier(name, modifiers) {
 }
 
 /**
+ * 
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
-
-/*  */
 
 var baseOptions = {
   modules: modules$1,
@@ -8191,10 +8200,9 @@ var ref$1 = createCompiler(baseOptions);
 var compileToFunctions = ref$1.compileToFunctions;
 
 /**
+ * 
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
-
-/*  */
 
 var idToTemplate = function (id, instance) {
   if (!id) { return }
@@ -8215,7 +8223,7 @@ var idToTemplate = function (id, instance) {
 };
 
 var mount = Vue$2.prototype.$mount;
-Vue$2.prototype.$mount = function(el, hydrating) {
+Vue$2.prototype.$mount = function (el, hydrating) {
   if (el === this.$document) {
     process.env.NODE_ENV !== 'production' && warn(
       "Do not mount Vue to root document or body, try to mount to normal elements instead"

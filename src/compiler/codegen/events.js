@@ -38,7 +38,7 @@ export function genHandlers (
   events: ASTElementHandlers,
   isNative: boolean,
   warn: Function,
-  eventModifier?: Function
+  eventModifier: ?Function
 ): string {
   let res = isNative ? 'nativeOn:{' : 'on:{'
   for (const name in events) {
@@ -61,7 +61,7 @@ export function genHandlers (
 function genHandler (
   name: string,
   handler: ASTElementHandler | Array<ASTElementHandler>,
-  eventModifier?: Function
+  eventModifier: ?Function
 ): string {
   if (!handler) {
     return 'function(){}'
@@ -84,7 +84,7 @@ function genHandler (
     const keys = []
 
     if (eventModifier) {
-      let customModifierCode = eventModifier(name, handler.modifiers)
+      const customModifierCode = eventModifier(name, handler.modifiers)
       if (customModifierCode) genModifierCode += customModifierCode
     }
 

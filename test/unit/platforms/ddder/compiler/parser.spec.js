@@ -2,7 +2,7 @@
  * Created by zhiyuan.huang@rdder.com on 17/6/16.
  */
 
-'use strict';
+'use strict'
 
 import { parse } from 'compiler/parser/index'
 import { extend } from 'shared/util'
@@ -46,8 +46,7 @@ describe('normalize reserved tag name', () => {
     const ast = parse('<body></body>', options)
     expect(ast.tag).toBe('BODY')
   })
-
-});
+})
 
 describe('x-template parse', () => {
   const options = extend({}, baseOptions)
@@ -58,14 +57,13 @@ describe('x-template parse', () => {
       <script type="x-template" id="foo">foo</script>
       <script type="x-template" id="bar">bar</script>
       </div>
-    `, options);
+    `, options)
 
     expect(ast.xTemplateMaps['foo']).toBe('"foo"')
     expect(ast.xTemplateMaps['bar']).toBe('"bar"')
 
     for (let i = 0; i < ast.children.length; ++i) {
-      let child = ast.children[i];
-
+      const child = ast.children[i]
       expect(child.tag === 'script' && child.attrsMap.type === 'x-template').toBeFalsy()
     }
   })
@@ -75,9 +73,9 @@ describe('x-template parse', () => {
       <div>
       <script type="x-template">bar</script>
       </div>
-    `, options);
+    `, options)
 
-    expect(ast.plain).toBeFalsy();
+    expect(ast.plain).toBeFalsy()
   })
 
   it('only extract x-template type script tag', () => {
@@ -106,10 +104,10 @@ describe('x-template parse', () => {
       <script type="x-template" id="bar">bar1</script>
       <script type="x-template" id="bar">bar2</script>
       </div>
-    `, options);
+    `, options)
 
     expect(ast.xTemplateMaps['"default"']).toBe('"default2"')
     expect(ast.xTemplateMaps['foo']).toBe('"foo2"')
     expect(ast.xTemplateMaps['bar']).toBe('"bar2"')
   })
-});
+})

@@ -2,9 +2,9 @@
  * Created by zhiyuan.huang@rdder.com on 17/6/5.
  */
 
-'use strict';
+'use strict'
 
-const VueFactory = require('./factory.js').VueFactory;
+const VueFactory = require('./factory.js').VueFactory
 
 const instances = {}
 const components = {}
@@ -21,7 +21,7 @@ export function init (cfg) {
   renderer.Element = cfg.Element
 }
 
-export function reset() {
+export function reset () {
   clear(instances)
   clear(modules)
   clear(components)
@@ -30,7 +30,7 @@ export function reset() {
   delete renderer.Comment
 }
 
-function clear(obj) {
+function clear (obj) {
   for (const key in obj) {
     delete obj[key]
   }
@@ -194,6 +194,7 @@ function createVueModuleInstance (instanceId) {
  * @param  {string} code
  * @return {any}
  */
+/* eslint-disable no-unused-vars */
 function callFunction (globalObjects, body) {
   const globalKeys = []
   const globalValues = []

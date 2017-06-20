@@ -55,9 +55,9 @@ export function addHandler (
   }
 
   if (modifiers && modifiers.custom) {
-    delete modifiers.custom;
-    modifiers.eventName = name;
-    name = 'custom';
+    delete modifiers.custom
+    modifiers.eventName = name
+    name = 'custom'
   }
 
   // check capture modifier

@@ -1,10 +1,9 @@
 /**
+ * @flow
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-/* @flow */
-
-'use strict';
+'use strict'
 
 import { warn } from 'core/util/index'
 
@@ -30,7 +29,7 @@ const idToTemplate = (id, instance: Component) => {
 }
 
 const mount = Vue.prototype.$mount
-Vue.prototype.$mount = function(el, hydrating?: boolean): Component {
+Vue.prototype.$mount = function (el, hydrating?: boolean): Component {
   if (el === this.$document) {
     process.env.NODE_ENV !== 'production' && warn(
       `Do not mount Vue to root document or body, try to mount to normal elements instead`

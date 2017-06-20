@@ -235,7 +235,7 @@ export function parse (
 
       // apply end-transforms
       for (let i = 0; i < endTransforms.length; i++) {
-        endTransforms[i](element, options);
+        endTransforms[i](element, options)
       }
     },
 

@@ -290,8 +290,8 @@ describe('codegen', () => {
   })
 
   it('generate events with custom modifiers', () => {
-    let customModifierSpy = jasmine.createSpy('custom').and.returnValue('__custom__syp;')
-    let genOptions = {
+    const customModifierSpy = jasmine.createSpy('custom').and.returnValue('__custom__syp;')
+    const genOptions = {
       eventModifier: customModifierSpy
     }
 
@@ -301,7 +301,7 @@ describe('codegen', () => {
       genOptions
     )
 
-    expect(customModifierSpy).toHaveBeenCalled();
+    expect(customModifierSpy).toHaveBeenCalled()
   })
 
   it('generate events with generic modifiers', () => {
