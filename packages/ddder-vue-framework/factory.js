@@ -8200,6 +8200,285 @@ var ref$1 = createCompiler(baseOptions);
 var compileToFunctions = ref$1.compileToFunctions;
 
 /**
+ * Created by zhiyuan.huang@rdder.com on 17/6/21.
+ */
+
+var PropTypeError = (function (Error) {
+  function PropTypeError(msg) {
+    Error.call(this, msg);
+  }
+
+  if ( Error ) PropTypeError.__proto__ = Error;
+  PropTypeError.prototype = Object.create( Error && Error.prototype );
+  PropTypeError.prototype.constructor = PropTypeError;
+
+  return PropTypeError;
+}(Error));
+
+function throwStyleError(message1, style, caller, message2) {
+  throw new PropTypeError(message1 + '\n' + (caller || '<<unknown>>') + ': ' +
+    JSON.stringify(style, null, '  ') + (message2 || ''))
+}
+
+
+function returnNull() {
+  return null
+}
+
+function getProductionTypeChecker() {
+  return returnNull
+}
+
+function createPrimitiveTypeChecker(expectedType) {
+  function validate(props, propName, componentName, location, propFullName) {
+    var propValue = props[propName];
+    var propType = typeof propValue;
+    if (propType !== expectedType) {
+      return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected ') + ('`' + expectedType + '`.'))
+    }
+    return null
+  }
+  return validate
+}
+
+function createEnumTypeChecker(expectedValues) {
+  if (!Array.isArray(expectedValues)) {
+    // process.env.NODE_ENV !== 'production' ? warning(false, 'Invalid argument supplied to oneOf, expected an instance of array.') : void 0;
+    return returnNull
+  }
+
+  function validate(props, propName, componentName, location, propFullName) {
+    var propValue = props[propName];
+    for (var i = 0; i < expectedValues.length; i++) {
+      if (Object.is(propValue, expectedValues[i])) {
+        return null
+      }
+    }
+
+    var valuesString = JSON.stringify(expectedValues);
+    return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of value `' + propValue + '` ' + ('supplied to `' + componentName + '`, expected one of ' + valuesString + '.'))
+  }
+  return validate
+}
+
+function createUnionTypeChecker(arrayOfTypeCheckers) {
+  if (!Array.isArray(arrayOfTypeCheckers)) {
+    // process.env.NODE_ENV !== 'production' ? warning(false, 'Invalid argument supplied to oneOfType, expected an instance of array.') : void 0;
+    return returnNull
+  }
+
+  function validate(props, propName, componentName, location, propFullName) {
+    for (var i = 0; i < arrayOfTypeCheckers.length; i++) {
+      var checker = arrayOfTypeCheckers[i];
+      if (checker(props, propName, componentName, location, propFullName) == null) {
+        return null
+      }
+    }
+
+    return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` supplied to ' + ('`' + componentName + '`.'))
+  }
+  return validate
+}
+
+var PropTypeChecker;
+
+if (process.env.NODE_ENV !== 'production') {
+  PropTypeChecker = {
+    'number': createPrimitiveTypeChecker('number'),
+    'string': createPrimitiveTypeChecker('string'),
+
+    'any': returnNull,
+
+    'oneOfType': createUnionTypeChecker,
+    'oneOf': createEnumTypeChecker,
+    'shape': returnNull
+  };
+} else {
+  PropTypeChecker = {
+    'array': returnNull,
+    'number': returnNull,
+    'string': returnNull,
+
+    'any': returnNull,
+
+    'oneOfType': getProductionTypeChecker,
+    'oneOf': getProductionTypeChecker,
+    'shape': returnNull
+  };
+}
+
+var allStylePropTypes = {};
+
+function addValidStylePropTypes(stylePropTypes) {
+  for (var key in stylePropTypes) {
+    allStylePropTypes[key] = stylePropTypes[key];
+  }
+}
+
+function validateStyle(name, styles) {
+  if (process.env.NODE_ENV === 'production') { return }
+
+  var style = styles[name];
+  for (var prop in style) {
+    validateStyleProp(prop, style, 'StyleSheet ' + name);
+  }
+}
+
+function validateStyleProp(prop, style, caller) {
+  if (process.env.NODE_ENV === 'production') { return }
+
+  if (allStylePropTypes[prop] === undefined) {
+    var message1 = '"' + prop + '" is not a valid style property.';
+    var message2 = '\nValid style props: ' +
+      JSON.stringify(Object.keys(allStylePropTypes).sort(), null, '  ');
+
+    throwStyleError(message1, style, caller, message2);
+  }
+
+  var error = allStylePropTypes[prop](
+    style,
+    prop,
+    caller,
+    'prop',
+    null
+  );
+
+  if (error) {
+    throwStyleError(error.message, style, caller);
+  }
+}
+
+var LayoutPropTypes = {
+  width: PropTypeChecker.oneOfType([PropTypeChecker.number, PropTypeChecker.string]),
+  height: PropTypeChecker.oneOfType([PropTypeChecker.number, PropTypeChecker.string])
+};
+
+addValidStylePropTypes(LayoutPropTypes);
+
+/**
+ * 
+ *
+ * Created by zhiyuan.huang@rdder.com on 17/6/21.
+ */
+
+var objects = {};
+var uniqueID = 1;
+var emptyObject$1 = {};
+
+function register(object) {
+  var id = ++uniqueID;
+
+  if (process.env.NODE_ENV !== 'production') {
+    Object.freeze(object);
+  }
+
+  objects[id] = object;
+  return id
+}
+
+function getByID(id) {
+  if (!id) { return emptyObject$1 }
+
+  var object = objects[id];
+  if (!object) { return emptyObject$1 }
+
+  return object
+}
+
+/**
+ * Created by zhiyuan.huang@rdder.com on 17/6/21.
+ */
+
+var typeProcessors = {};
+
+function addTypeProcessor(processors) {
+  for (var key in processors) {
+    typeProcessors[key] = processors[key];
+  }
+}
+
+function processStyle(styles) {
+  for (var type in styles) {
+    processStyleType(type, styles);
+  }
+}
+
+function processStyleType(type, styles) {
+  if (typeProcessors[type] === undefined) { return; }
+
+  try {
+    var processResult = typeProcessors[type](styles[type]);
+    styles[type] = processResult;
+  } catch(e) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw e;
+    }
+  }
+}
+
+/**
+ *
+ * Created by zhiyuan.huang@rdder.com on 17/6/21.
+ */
+
+function getStyle(style) {
+  if (typeof style === 'number') {
+    return getByID(style)
+  }
+  return style
+}
+
+function flatten(style) {
+  if (!style) { return undefined }
+
+  if (!Array.isArray(style)) {
+    return getStyle(style)
+  }
+
+  var result = {};
+
+  for (var i = 0; i < style.length; ++i) {
+    var computedStyle = flatten(style[i]);
+    if (computedStyle) {
+      for (var key in computedStyle) {
+        result[key] = computedStyle[key];
+      }
+    }
+  }
+
+  return result
+}
+
+function install(Vue) {
+
+  Vue.StyleSheet = {
+    addValidStylePropTypes: addValidStylePropTypes,
+    validateStyle: validateStyle,
+
+    addTypeProcessor: addTypeProcessor,
+    processStyle: processStyle,
+
+    flatten: flatten,
+    create: function(obj) {
+      var result = {};
+
+      for (var key in obj) {
+        validateStyle(key, obj);
+        result[key] = register(obj[key]);
+      }
+
+      return result
+    }
+  };
+
+}
+
+
+var StyleSheet = Object.freeze({
+	install: install
+});
+
+/**
  * 
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
@@ -8274,6 +8553,8 @@ function getOuterTemplate (el) {
 }
 
 Vue$2.compile = compileToFunctions;
+
+Vue$2.use(StyleSheet);
 
 exports.Vue = Vue$2;
 

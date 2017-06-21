@@ -10,6 +10,8 @@ import { warn } from 'core/util/index'
 import Vue from './runtime/index'
 import { compileToFunctions } from './compiler/index'
 
+import * as StyleSheet from './runtime/plugins/StyleSheet/index'
+
 const idToTemplate = (id, instance: Component) => {
   if (!id) return
 
@@ -78,5 +80,7 @@ function getOuterTemplate (el): string {
 }
 
 Vue.compile = compileToFunctions
+
+Vue.use(StyleSheet);
 
 exports.Vue = Vue
