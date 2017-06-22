@@ -5512,6 +5512,85 @@ var isFalsyAttrValue = function (val) {
 
 /*  */
 
+function genClassForVnode (vnode) {
+  var data = vnode.data;
+  var parentNode = vnode;
+  var childNode = vnode;
+  while (isDef(childNode.componentInstance)) {
+    childNode = childNode.componentInstance._vnode;
+    if (childNode.data) {
+      data = mergeClassData(childNode.data, data);
+    }
+  }
+  while (isDef(parentNode = parentNode.parent)) {
+    if (parentNode.data) {
+      data = mergeClassData(data, parentNode.data);
+    }
+  }
+  return renderClass(data.staticClass, data.class)
+}
+
+function mergeClassData (child, parent) {
+  return {
+    staticClass: concat(child.staticClass, parent.staticClass),
+    class: isDef(child.class)
+      ? [child.class, parent.class]
+      : parent.class
+  }
+}
+
+function renderClass (
+  staticClass,
+  dynamicClass
+) {
+  if (isDef(staticClass) || isDef(dynamicClass)) {
+    return concat(staticClass, stringifyClass(dynamicClass))
+  }
+  /* istanbul ignore next */
+  return ''
+}
+
+function concat (a, b) {
+  return a ? b ? (a + ' ' + b) : a : (b || '')
+}
+
+function stringifyClass (value) {
+  if (Array.isArray(value)) {
+    return stringifyArray(value)
+  }
+  if (isObject(value)) {
+    return stringifyObject(value)
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  /* istanbul ignore next */
+  return ''
+}
+
+function stringifyArray (value) {
+  var res = '';
+  var stringified;
+  for (var i = 0, l = value.length; i < l; i++) {
+    if (isDef(stringified = stringifyClass(value[i])) && stringified !== '') {
+      if (res) { res += ' '; }
+      res += stringified;
+    }
+  }
+  return res
+}
+
+function stringifyObject (value) {
+  var res = '';
+  for (var key in value) {
+    if (value[key]) {
+      if (res) { res += ' '; }
+      res += key;
+    }
+  }
+  return res
+}
+
 /*  */
 
 
@@ -5671,11 +5750,203 @@ var events = {
   update: updateDOMListeners
 };
 
+/*  */
+
+function updateClass (oldVnode, vnode) {
+  var data = vnode.data;
+  var oldData = oldVnode.data;
+  if (
+    isUndef(data.staticClass) &&
+    isUndef(data.class) && (
+      isUndef(oldData) || (
+        isUndef(oldData.staticClass) &&
+        isUndef(oldData.class)
+      )
+    )
+  ) {
+    return
+  }
+
+  return genClassForVnode(vnode)
+}
+
+/*  */
+
+var parseStyleText = cached(function (cssText) {
+  var res = {};
+  var listDelimiter = /;(?![^(]*\))/g;
+  var propertyDelimiter = /:(.+)/;
+  cssText.split(listDelimiter).forEach(function (item) {
+    if (item) {
+      var tmp = item.split(propertyDelimiter);
+      tmp.length > 1 && (res[tmp[0].trim()] = tmp[1].trim());
+    }
+  });
+  return res
+});
+
+// merge static and dynamic style data on the same vnode
+function normalizeStyleData (data) {
+  var style = normalizeStyleBinding(data.style);
+  // static style is pre-processed into an object during compilation
+  // and is always a fresh object, so it's safe to merge into it
+  return data.staticStyle
+    ? extend(data.staticStyle, style)
+    : style
+}
+
+// normalize possible array / string values into Object
+function normalizeStyleBinding (bindingStyle) {
+  if (Array.isArray(bindingStyle)) {
+    return toObject(bindingStyle)
+  }
+  if (typeof bindingStyle === 'string') {
+    return parseStyleText(bindingStyle)
+  }
+  return bindingStyle
+}
+
+/**
+ * parent component style should be after child's
+ * so that parent component's style could override it
+ */
+function getStyle (vnode, checkChild) {
+  var res = {};
+  var styleData;
+
+  if (checkChild) {
+    var childNode = vnode;
+    while (childNode.componentInstance) {
+      childNode = childNode.componentInstance._vnode;
+      if (childNode.data && (styleData = normalizeStyleData(childNode.data))) {
+        extend(res, styleData);
+      }
+    }
+  }
+
+  if ((styleData = normalizeStyleData(vnode.data))) {
+    extend(res, styleData);
+  }
+
+  var parentNode = vnode;
+  while ((parentNode = parentNode.parent)) {
+    if (parentNode.data && (styleData = normalizeStyleData(parentNode.data))) {
+      extend(res, styleData);
+    }
+  }
+  return res
+}
+
+/*  */
+
+function updateStyle (oldVnode, vnode) {
+  var data = vnode.data;
+  var oldData = oldVnode.data;
+
+  if (isUndef(data.staticStyle) && isUndef(data.style) &&
+    isUndef(oldData.staticStyle) && isUndef(oldData.style)
+  ) {
+    return
+  }
+
+  return getStyle(vnode, true)
+}
+
+/**
+ * Created by zhiyuan.huang@rdder.com on 17/6/22.
+ */
+
+function setStyle (elm, name, val) {
+  if (!elm) { return }
+  if (!name) { return }
+
+  if ({}.toString.apply(name) === '[object Object]') {
+    for (var type in name) {
+      setStyle(elm, type, name[type]);
+    }
+    return
+  }
+
+  elm.setStyle(normalizeName(name) + ':' + val);
+}
+
+var hyphenateRE$1 = /([^-])([A-Z])/g;
+var hyphenate$1 = cached(function (str) {
+  return str
+    .replace(hyphenateRE$1, '$1-$2')
+    .replace(hyphenateRE$1, '$1-$2')
+    .toLowerCase()
+});
+
+function normalizeName (name) {
+  return hyphenate$1(name)
+}
+
+function updateStyleSheet (oldVnode, vnode) {
+  var el = vnode.elm;
+  var newClassString = updateClass(oldVnode, vnode);
+  var newStyle = updateStyle(oldVnode, vnode);
+
+  if (!newClassString && !newStyle) { return }
+
+  var context = vnode.context;
+  var StyleSheet = context.constructor.StyleSheet;
+
+  if (!StyleSheet) { return setStyle(el, newStyle) }
+
+  var styleList = [];
+
+  if (newClassString) {
+    var newClassSet = Array.from(new Set(newClassString.split(' ')).values());
+
+    for (var i = 0; i < newClassSet.length; ++i) {
+      var val = newClassSet[i];
+
+      if (val.match(/^\d*$/)) {
+        styleList.push(Number(val));
+      } else {
+        if (context.styleScope && context.styleScope[val]) { styleList.push(context.styleScope[val]); }
+      }
+    }
+  }
+
+  if (newStyle) {
+    styleList.push(newStyle);
+  }
+
+  var newStyleSheet = StyleSheet.flatten(styleList);
+  var prevStyleSheet = el._prevStyleSheet || (el._prevStyleSheet = {});
+
+  StyleSheet.processStyle(newStyleSheet);
+
+  for (var name in prevStyleSheet) {
+    if (isUndef(newStyleSheet[name]) && prevStyleSheet[name]) {
+      prevStyleSheet[name] = '';
+      setStyle(el, name, '');
+    }
+  }
+
+  for (var name$1 in newStyleSheet) {
+    var cur = newStyleSheet[name$1];
+    if (cur !== prevStyleSheet[name$1]) {
+      var newVal = cur == null ? '' : cur;
+
+      prevStyleSheet[name$1] = newVal;
+      setStyle(el, name$1, newVal);
+    }
+  }
+}
+
+var stylesheet = {
+  create: updateStyleSheet,
+  update: updateStyleSheet
+};
+
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-var platformModules = [xTemplate, attrs, events];
+var platformModules = [xTemplate, attrs, events, stylesheet];
 
 /*  */
 
@@ -8129,11 +8400,97 @@ var xTemplate$1 = {
   genData: genData$1
 };
 
+/*  */
+
+function transformNode (el, options) {
+  var warn = options.warn || baseWarn;
+  var staticClass = getAndRemoveAttr(el, 'class');
+  if (process.env.NODE_ENV !== 'production' && staticClass) {
+    var expression = parseText(staticClass, options.delimiters);
+    if (expression) {
+      warn(
+        "class=\"" + staticClass + "\": " +
+        'Interpolation inside attributes has been removed. ' +
+        'Use v-bind or the colon shorthand instead. For example, ' +
+        'instead of <div class="{{ val }}">, use <div :class="val">.'
+      );
+    }
+  }
+  if (staticClass) {
+    el.staticClass = JSON.stringify(staticClass);
+  }
+  var classBinding = getBindingAttr(el, 'class', false /* getStatic */);
+  if (classBinding) {
+    el.classBinding = classBinding;
+  }
+}
+
+function genData$2 (el) {
+  var data = '';
+  if (el.staticClass) {
+    data += "staticClass:" + (el.staticClass) + ",";
+  }
+  if (el.classBinding) {
+    data += "class:" + (el.classBinding) + ",";
+  }
+  return data
+}
+
+var klass = {
+  staticKeys: ['staticClass'],
+  transformNode: transformNode,
+  genData: genData$2
+};
+
+/*  */
+
+function transformNode$1 (el, options) {
+  var warn = options.warn || baseWarn;
+  var staticStyle = getAndRemoveAttr(el, 'style');
+  if (staticStyle) {
+    /* istanbul ignore if */
+    if (process.env.NODE_ENV !== 'production') {
+      var expression = parseText(staticStyle, options.delimiters);
+      if (expression) {
+        warn(
+          "style=\"" + staticStyle + "\": " +
+          'Interpolation inside attributes has been removed. ' +
+          'Use v-bind or the colon shorthand instead. For example, ' +
+          'instead of <div style="{{ val }}">, use <div :style="val">.'
+        );
+      }
+    }
+    el.staticStyle = JSON.stringify(parseStyleText(staticStyle));
+  }
+
+  var styleBinding = getBindingAttr(el, 'style', false /* getStatic */);
+  if (styleBinding) {
+    el.styleBinding = styleBinding;
+  }
+}
+
+function genData$3 (el) {
+  var data = '';
+  if (el.staticStyle) {
+    data += "staticStyle:" + (el.staticStyle) + ",";
+  }
+  if (el.styleBinding) {
+    data += "style:(" + (el.styleBinding) + "),";
+  }
+  return data
+}
+
+var style = {
+  staticKeys: ['staticStyle'],
+  transformNode: transformNode$1,
+  genData: genData$3
+};
+
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-var modules$1 = [tag, xTemplate$1];
+var modules$1 = [tag, xTemplate$1, klass, style];
 
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
@@ -8202,7 +8559,7 @@ var compileToFunctions = ref$1.compileToFunctions;
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/21.
  */
-
+/* eslint-disable */
 var PropTypeError = (function (Error) {
   function PropTypeError(msg) {
     Error.call(this, msg);
@@ -8365,7 +8722,7 @@ var objects = {};
 var uniqueID = 1;
 var emptyObject$1 = {};
 
-function register(object) {
+function register (object) {
   var id = ++uniqueID;
 
   if (process.env.NODE_ENV !== 'production') {
@@ -8376,7 +8733,7 @@ function register(object) {
   return id
 }
 
-function getByID(id) {
+function getByID (id) {
   if (!id) { return emptyObject$1 }
 
   var object = objects[id];
@@ -8386,9 +8743,398 @@ function getByID(id) {
 }
 
 /**
+ * copy from React-Native normalizeColor
+ *
+ * 
+ * */
+/* eslint-disable */
+function normalizeColor(color) {
+  var match;
+
+  if (typeof color === 'number') {
+    if (color >>> 0 === color && color >= 0 && color <= 0xffffffff) {
+      return color;
+    }
+    return null;
+  }
+
+  // Ordered based on occurrences on Facebook codebase
+  if ((match = matchers.hex6.exec(color))) {
+    return parseInt(match[1] + 'ff', 16) >>> 0;
+  }
+
+  if (names.hasOwnProperty(color)) {
+    return names[color];
+  }
+
+  if ((match = matchers.rgb.exec(color))) {
+    return (
+      parse255(match[1]) << 24 | // r
+      parse255(match[2]) << 16 | // g
+      parse255(match[3]) << 8 | // b
+      0x000000ff // a
+    ) >>> 0;
+  }
+
+  if ((match = matchers.rgba.exec(color))) {
+    return (
+      parse255(match[1]) << 24 | // r
+      parse255(match[2]) << 16 | // g
+      parse255(match[3]) << 8 | // b
+      parse1(match[4]) // a
+    ) >>> 0;
+  }
+
+  if ((match = matchers.hex3.exec(color))) {
+    return parseInt(
+      match[1] + match[1] + // r
+      match[2] + match[2] + // g
+      match[3] + match[3] + // b
+      'ff', // a
+      16
+    ) >>> 0;
+  }
+
+  // https://drafts.csswg.org/css-color-4/#hex-notation
+  if ((match = matchers.hex8.exec(color))) {
+    return parseInt(match[1], 16) >>> 0;
+  }
+
+  if ((match = matchers.hex4.exec(color))) {
+    return parseInt(
+      match[1] + match[1] + // r
+      match[2] + match[2] + // g
+      match[3] + match[3] + // b
+      match[4] + match[4], // a
+      16
+    ) >>> 0;
+  }
+
+  if ((match = matchers.hsl.exec(color))) {
+    return (
+      hslToRgb(
+        parse360(match[1]), // h
+        parsePercentage(match[2]), // s
+        parsePercentage(match[3]) // l
+      ) |
+      0x000000ff // a
+    ) >>> 0;
+  }
+
+  if ((match = matchers.hsla.exec(color))) {
+    return (
+      hslToRgb(
+        parse360(match[1]), // h
+        parsePercentage(match[2]), // s
+        parsePercentage(match[3]) // l
+      ) |
+      parse1(match[4]) // a
+    ) >>> 0;
+  }
+
+  return null;
+}
+
+function hue2rgb(p, q, t) {
+  if (t < 0) {
+    t += 1;
+  }
+  if (t > 1) {
+    t -= 1;
+  }
+  if (t < 1 / 6) {
+    return p + (q - p) * 6 * t;
+  }
+  if (t < 1 / 2) {
+    return q;
+  }
+  if (t < 2 / 3) {
+    return p + (q - p) * (2 / 3 - t) * 6;
+  }
+  return p;
+}
+
+function hslToRgb(h, s, l) {
+  var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  var p = 2 * l - q;
+  var r = hue2rgb(p, q, h + 1 / 3);
+  var g = hue2rgb(p, q, h);
+  var b = hue2rgb(p, q, h - 1 / 3);
+
+  return (
+    Math.round(r * 255) << 24 |
+    Math.round(g * 255) << 16 |
+    Math.round(b * 255) << 8
+  );
+}
+
+// var INTEGER = '[-+]?\\d+';
+var NUMBER = '[-+]?\\d*\\.?\\d+';
+var PERCENTAGE = NUMBER + '%';
+
+function call() {
+  var args = [], len = arguments.length;
+  while ( len-- ) args[ len ] = arguments[ len ];
+
+  return '\\(\\s*(' + args.join(')\\s*,\\s*(') + ')\\s*\\)';
+}
+
+var matchers = {
+  rgb: new RegExp('rgb' + call(NUMBER, NUMBER, NUMBER)),
+  rgba: new RegExp('rgba' + call(NUMBER, NUMBER, NUMBER, NUMBER)),
+  hsl: new RegExp('hsl' + call(NUMBER, PERCENTAGE, PERCENTAGE)),
+  hsla: new RegExp('hsla' + call(NUMBER, PERCENTAGE, PERCENTAGE, NUMBER)),
+  hex3: /^#([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})$/,
+  hex4: /^#([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})$/,
+  hex6: /^#([0-9a-fA-F]{6})$/,
+  hex8: /^#([0-9a-fA-F]{8})$/,
+};
+
+function parse255(str) {
+  var int = parseInt(str, 10);
+  if (int < 0) {
+    return 0;
+  }
+  if (int > 255) {
+    return 255;
+  }
+  return int;
+}
+
+function parse360(str) {
+  var int = parseFloat(str);
+  return (((int % 360) + 360) % 360) / 360;
+}
+
+function parse1(str) {
+  var num = parseFloat(str);
+  if (num < 0) {
+    return 0;
+  }
+  if (num > 1) {
+    return 255;
+  }
+  return Math.round(num * 255);
+}
+
+function parsePercentage(str) {
+  // parseFloat conveniently ignores the final %
+  var int = parseFloat(str);
+  if (int < 0) {
+    return 0;
+  }
+  if (int > 100) {
+    return 1;
+  }
+  return int / 100;
+}
+
+var names = {
+  transparent: 0x00000000,
+
+  // http://www.w3.org/TR/css3-color/#svg-color
+  aliceblue: 0xf0f8ffff,
+  antiquewhite: 0xfaebd7ff,
+  aqua: 0x00ffffff,
+  aquamarine: 0x7fffd4ff,
+  azure: 0xf0ffffff,
+  beige: 0xf5f5dcff,
+  bisque: 0xffe4c4ff,
+  black: 0x000000ff,
+  blanchedalmond: 0xffebcdff,
+  blue: 0x0000ffff,
+  blueviolet: 0x8a2be2ff,
+  brown: 0xa52a2aff,
+  burlywood: 0xdeb887ff,
+  burntsienna: 0xea7e5dff,
+  cadetblue: 0x5f9ea0ff,
+  chartreuse: 0x7fff00ff,
+  chocolate: 0xd2691eff,
+  coral: 0xff7f50ff,
+  cornflowerblue: 0x6495edff,
+  cornsilk: 0xfff8dcff,
+  crimson: 0xdc143cff,
+  cyan: 0x00ffffff,
+  darkblue: 0x00008bff,
+  darkcyan: 0x008b8bff,
+  darkgoldenrod: 0xb8860bff,
+  darkgray: 0xa9a9a9ff,
+  darkgreen: 0x006400ff,
+  darkgrey: 0xa9a9a9ff,
+  darkkhaki: 0xbdb76bff,
+  darkmagenta: 0x8b008bff,
+  darkolivegreen: 0x556b2fff,
+  darkorange: 0xff8c00ff,
+  darkorchid: 0x9932ccff,
+  darkred: 0x8b0000ff,
+  darksalmon: 0xe9967aff,
+  darkseagreen: 0x8fbc8fff,
+  darkslateblue: 0x483d8bff,
+  darkslategray: 0x2f4f4fff,
+  darkslategrey: 0x2f4f4fff,
+  darkturquoise: 0x00ced1ff,
+  darkviolet: 0x9400d3ff,
+  deeppink: 0xff1493ff,
+  deepskyblue: 0x00bfffff,
+  dimgray: 0x696969ff,
+  dimgrey: 0x696969ff,
+  dodgerblue: 0x1e90ffff,
+  firebrick: 0xb22222ff,
+  floralwhite: 0xfffaf0ff,
+  forestgreen: 0x228b22ff,
+  fuchsia: 0xff00ffff,
+  gainsboro: 0xdcdcdcff,
+  ghostwhite: 0xf8f8ffff,
+  gold: 0xffd700ff,
+  goldenrod: 0xdaa520ff,
+  gray: 0x808080ff,
+  green: 0x008000ff,
+  greenyellow: 0xadff2fff,
+  grey: 0x808080ff,
+  honeydew: 0xf0fff0ff,
+  hotpink: 0xff69b4ff,
+  indianred: 0xcd5c5cff,
+  indigo: 0x4b0082ff,
+  ivory: 0xfffff0ff,
+  khaki: 0xf0e68cff,
+  lavender: 0xe6e6faff,
+  lavenderblush: 0xfff0f5ff,
+  lawngreen: 0x7cfc00ff,
+  lemonchiffon: 0xfffacdff,
+  lightblue: 0xadd8e6ff,
+  lightcoral: 0xf08080ff,
+  lightcyan: 0xe0ffffff,
+  lightgoldenrodyellow: 0xfafad2ff,
+  lightgray: 0xd3d3d3ff,
+  lightgreen: 0x90ee90ff,
+  lightgrey: 0xd3d3d3ff,
+  lightpink: 0xffb6c1ff,
+  lightsalmon: 0xffa07aff,
+  lightseagreen: 0x20b2aaff,
+  lightskyblue: 0x87cefaff,
+  lightslategray: 0x778899ff,
+  lightslategrey: 0x778899ff,
+  lightsteelblue: 0xb0c4deff,
+  lightyellow: 0xffffe0ff,
+  lime: 0x00ff00ff,
+  limegreen: 0x32cd32ff,
+  linen: 0xfaf0e6ff,
+  magenta: 0xff00ffff,
+  maroon: 0x800000ff,
+  mediumaquamarine: 0x66cdaaff,
+  mediumblue: 0x0000cdff,
+  mediumorchid: 0xba55d3ff,
+  mediumpurple: 0x9370dbff,
+  mediumseagreen: 0x3cb371ff,
+  mediumslateblue: 0x7b68eeff,
+  mediumspringgreen: 0x00fa9aff,
+  mediumturquoise: 0x48d1ccff,
+  mediumvioletred: 0xc71585ff,
+  midnightblue: 0x191970ff,
+  mintcream: 0xf5fffaff,
+  mistyrose: 0xffe4e1ff,
+  moccasin: 0xffe4b5ff,
+  navajowhite: 0xffdeadff,
+  navy: 0x000080ff,
+  oldlace: 0xfdf5e6ff,
+  olive: 0x808000ff,
+  olivedrab: 0x6b8e23ff,
+  orange: 0xffa500ff,
+  orangered: 0xff4500ff,
+  orchid: 0xda70d6ff,
+  palegoldenrod: 0xeee8aaff,
+  palegreen: 0x98fb98ff,
+  paleturquoise: 0xafeeeeff,
+  palevioletred: 0xdb7093ff,
+  papayawhip: 0xffefd5ff,
+  peachpuff: 0xffdab9ff,
+  peru: 0xcd853fff,
+  pink: 0xffc0cbff,
+  plum: 0xdda0ddff,
+  powderblue: 0xb0e0e6ff,
+  purple: 0x800080ff,
+  rebeccapurple: 0x663399ff,
+  red: 0xff0000ff,
+  rosybrown: 0xbc8f8fff,
+  royalblue: 0x4169e1ff,
+  saddlebrown: 0x8b4513ff,
+  salmon: 0xfa8072ff,
+  sandybrown: 0xf4a460ff,
+  seagreen: 0x2e8b57ff,
+  seashell: 0xfff5eeff,
+  sienna: 0xa0522dff,
+  silver: 0xc0c0c0ff,
+  skyblue: 0x87ceebff,
+  slateblue: 0x6a5acdff,
+  slategray: 0x708090ff,
+  slategrey: 0x708090ff,
+  snow: 0xfffafaff,
+  springgreen: 0x00ff7fff,
+  steelblue: 0x4682b4ff,
+  tan: 0xd2b48cff,
+  teal: 0x008080ff,
+  thistle: 0xd8bfd8ff,
+  tomato: 0xff6347ff,
+  turquoise: 0x40e0d0ff,
+  violet: 0xee82eeff,
+  wheat: 0xf5deb3ff,
+  white: 0xffffffff,
+  whitesmoke: 0xf5f5f5ff,
+  yellow: 0xffff00ff,
+  yellowgreen: 0x9acd32ff,
+};
+
+/**
+ * copy from React-Native processColor
+ * */
+/* eslint-disable */
+/* eslint no-bitwise: 0 */
+function processColor(color) {
+  if (color === undefined || color === null) {
+    return color
+  }
+
+  var int32Color = normalizeColor(color);
+  if (int32Color === null) {
+    return undefined
+  }
+
+  // Converts 0xrrggbbaa into 0xaarrggbb
+  int32Color = (int32Color << 24 | int32Color >>> 8) >>> 0;
+
+  // Converts 0xaarrggbb into rgba(rr, gg, bb, aa)
+  return int32ColorToRgba(int32Color)
+}
+
+function int32ColorToRgba(val) {
+  var aRgbInt10ColorArray = val.toString(16).match(/.{1,2}/g) || [];
+
+  var a = aRgbInt10ColorArray[0];
+  var r = aRgbInt10ColorArray[1];
+  var g = aRgbInt10ColorArray[2];
+  var b = aRgbInt10ColorArray[3];
+
+  if (a !== undefined) {
+    a = parseInt(a, 16);
+
+    if (a >= 255) { a = 1; }
+    else if (a <= 0) { a = 0; }
+    else { a = (a / 255).toFixed(2); }
+  } else {
+    a = 1;
+  }
+
+  r = r ? parseInt(r, 16) : 0;
+  g = g ? parseInt(g, 16) : 0;
+  b = b ? parseInt(b, 16) : 0;
+
+  return ("rgba(" + ([r, g, b, a].join(', ')) + ")")
+}
+
+/**
  * Created by zhiyuan.huang@rdder.com on 17/6/21.
  */
-
+/* eslint-disable */
 var typeProcessors = {};
 
 function addTypeProcessor(processors) {
@@ -8398,6 +9144,7 @@ function addTypeProcessor(processors) {
 }
 
 function processStyle(styles) {
+  if (!styles) { return }
   for (var type in styles) {
     processStyleType(type, styles);
   }
@@ -8416,23 +9163,33 @@ function processStyleType(type, styles) {
   }
 }
 
+var colorTypes = {
+  color: processColor,
+  backgroundColor: processColor,
+  textColor: processColor,
+  fillColor: processColor,
+  borderColor: processColor
+};
+
+addTypeProcessor(colorTypes);
+
 /**
  *
  * Created by zhiyuan.huang@rdder.com on 17/6/21.
  */
 
-function getStyle(style) {
+function getStyle$1 (style) {
   if (typeof style === 'number') {
     return getByID(style)
   }
   return style
 }
 
-function flatten(style) {
+function flatten (style) {
   if (!style) { return undefined }
 
   if (!Array.isArray(style)) {
-    return getStyle(style)
+    return getStyle$1(style)
   }
 
   var result = {};
@@ -8449,8 +9206,7 @@ function flatten(style) {
   return result
 }
 
-function install(Vue) {
-
+function install (Vue) {
   Vue.StyleSheet = {
     addValidStylePropTypes: addValidStylePropTypes,
     validateStyle: validateStyle,
@@ -8459,23 +9215,26 @@ function install(Vue) {
     processStyle: processStyle,
 
     flatten: flatten,
-    create: function(obj) {
+    create: function (obj) {
       var result = {};
 
       for (var key in obj) {
-        validateStyle(key, obj);
+        // validateStyle(key, obj)
         result[key] = register(obj[key]);
       }
 
       return result
     }
   };
-
 }
+
+var index$2 = {
+  install: install
+};
 
 
 var StyleSheet = Object.freeze({
-	install: install
+	default: index$2
 });
 
 /**

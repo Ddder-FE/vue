@@ -81,6 +81,6 @@ function getOuterTemplate (el): string {
 
 Vue.compile = compileToFunctions
 
-Vue.use(StyleSheet);
+Vue.use(StyleSheet)
 
 exports.Vue = Vue

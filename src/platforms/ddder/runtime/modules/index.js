@@ -7,5 +7,6 @@
 import xTemplate from './xTemplate'
 import attrs from './attrs'
 import events from './events'
+import stylesheet from './stylesheet'
 
-export default [xTemplate, attrs, events]
+export default [xTemplate, attrs, events, stylesheet]

@@ -6,5 +6,7 @@
 
 import tag from './tag'
 import xTemplate from './xTemplate'
+import klass from 'web/compiler/modules/class'
+import style from 'web/compiler/modules/style'
 
-export default [tag, xTemplate]
+export default [tag, xTemplate, klass, style]

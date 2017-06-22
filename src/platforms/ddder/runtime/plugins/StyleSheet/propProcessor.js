@@ -1,9 +1,10 @@
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/21.
  */
-
+/* eslint-disable */
 'use strict'
 
+import processColor from './processColor'
 
 const typeProcessors = {}
 
@@ -14,6 +15,7 @@ export function addTypeProcessor(processors) {
 }
 
 export function processStyle(styles) {
+  if (!styles) return
   for (const type in styles) {
     processStyleType(type, styles);
   }
@@ -31,3 +33,13 @@ export function processStyleType(type, styles) {
     }
   }
 }
+
+const colorTypes = {
+  color: processColor,
+  backgroundColor: processColor,
+  textColor: processColor,
+  fillColor: processColor,
+  borderColor: processColor
+}
+
+addTypeProcessor(colorTypes)

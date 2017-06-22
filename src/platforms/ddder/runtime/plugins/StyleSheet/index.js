@@ -3,20 +3,20 @@
  * Created by zhiyuan.huang@rdder.com on 17/6/21.
  */
 
-'use strict';
+'use strict'
 
 import { addValidStylePropTypes, validateStyle } from './propValidator'
 import * as registry from './registry'
 import { addTypeProcessor, processStyle } from './propProcessor'
 
-function getStyle(style) {
+function getStyle (style) {
   if (typeof style === 'number') {
     return registry.getByID(style)
   }
   return style
 }
 
-function flatten(style) {
+function flatten (style) {
   if (!style) return undefined
 
   if (!Array.isArray(style)) {
@@ -37,8 +37,7 @@ function flatten(style) {
   return result
 }
 
-export function install(Vue) {
-
+function install (Vue) {
   Vue.StyleSheet = {
     addValidStylePropTypes,
     validateStyle,
@@ -47,16 +46,19 @@ export function install(Vue) {
     processStyle,
 
     flatten,
-    create: function(obj) {
+    create: function (obj) {
       const result = {}
 
       for (const key in obj) {
-        validateStyle(key, obj)
+        // validateStyle(key, obj)
         result[key] = registry.register(obj[key])
       }
 
       return result
     }
   }
+}
 
+export default {
+  install
 }

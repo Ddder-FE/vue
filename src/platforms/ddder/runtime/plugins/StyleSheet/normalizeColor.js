@@ -3,8 +3,7 @@
  *
  * @flow
  * */
-
-/* eslint no-bitwise: 0 */
+/* eslint-disable */
 'use strict'
 
 export default function normalizeColor(color: string | number): ?number {
@@ -175,7 +174,7 @@ function parse1(str: string): number {
 
 function parsePercentage(str: string): number {
   // parseFloat conveniently ignores the final %
-  const int = parseFloat(str, 10);
+  const int = parseFloat(str);
   if (int < 0) {
     return 0;
   }

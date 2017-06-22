@@ -1,7 +1,7 @@
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/21.
  */
-
+/* eslint-disable */
 'use strict'
 
 class PropTypeError extends Error {

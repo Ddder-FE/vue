@@ -10,7 +10,7 @@ const objects = {}
 let uniqueID = 1
 const emptyObject = {}
 
-export function register(object: Object) {
+export function register (object: Object) {
   const id = ++uniqueID
 
   if (process.env.NODE_ENV !== 'production') {
@@ -21,7 +21,7 @@ export function register(object: Object) {
   return id
 }
 
-export function getByID(id?: number): Object {
+export function getByID (id?: number): Object {
   if (!id) return emptyObject
 
   const object = objects[id]
@@ -29,5 +29,4 @@ export function getByID(id?: number): Object {
 
   return object
 }
-
 
