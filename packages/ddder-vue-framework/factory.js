@@ -552,7 +552,7 @@ function handleError (err, vm, info) {
 var hasProto = '__proto__' in {};
 
 // Browser environment sniffing
-var inBrowser = typeof window !== 'undefined';
+var inBrowser = typeof window !== 'undefined' && Object.prototype.toString.apply(window) === '[object Window]';
 var UA = inBrowser && window.navigator.userAgent.toLowerCase();
 var isIE = UA && /msie|trident/.test(UA);
 var isIE9 = UA && UA.indexOf('msie 9.0') > 0;
@@ -5890,9 +5890,13 @@ function updateStyleSheet (oldVnode, vnode) {
   if (!newClassString && !newStyle) { return }
 
   var context = vnode.context;
-  var StyleSheet = context.constructor.StyleSheet;
+  var StyleSheet = context.StyleSheet;
 
-  if (!StyleSheet) { return setStyle(el, newStyle) }
+  if (!StyleSheet) {
+    // todo: should compare prevStyleSheet with newStyle, and patch style diff
+    el._prevStyleSheet = newStyle;
+    return setStyle(el, newStyle)
+  }
 
   var styleList = [];
 
@@ -5942,11 +5946,435 @@ var stylesheet = {
   update: updateStyleSheet
 };
 
+/*  */
+
+/**
+ * Add class with compatibility for SVG since classList is not supported on
+ * SVG elements in IE
+ */
+
+
+/**
+ * Remove class with compatibility for SVG since classList is not supported on
+ * SVG elements in IE
+ */
+
+/*  */
+
+function resolveTransition (def$$1) {
+  if (!def$$1) {
+    return
+  }
+  /* istanbul ignore else */
+  if (typeof def$$1 === 'object') {
+    var res = {};
+    if (def$$1.css !== false) {
+      extend(res, autoCssTransition(def$$1.name || 'v'));
+    }
+    extend(res, def$$1);
+    return res
+  } else if (typeof def$$1 === 'string') {
+    return autoCssTransition(def$$1)
+  }
+}
+
+var autoCssTransition = cached(function (name) {
+  return {
+    enterClass: (name + "-enter"),
+    enterToClass: (name + "-enter-to"),
+    enterActiveClass: (name + "-enter-active"),
+    leaveClass: (name + "-leave"),
+    leaveToClass: (name + "-leave-to"),
+    leaveActiveClass: (name + "-leave-active")
+  }
+});
+
+
+// Transition property/event sniffing
+
+
+
+
+// binding to window is necessary to make hot reload work in IE in strict mode
+var raf = inBrowser && window.requestAnimationFrame
+  ? window.requestAnimationFrame.bind(window)
+  : setTimeout;
+
+/**
+ * Created by zhiyuan.huang@rdder.com on 17/6/28.
+ */
+
+var animationUid = 0;
+
+function enter (_, vnode) {
+  var el = vnode.elm;
+
+  // call leave callback now
+  if (el._leaveCb) {
+    el._leaveCb.cancelled = true;
+    el._leaveCb();
+  }
+
+  var data = resolveTransition(vnode.data.transition);
+  if (!data) {
+    return
+  }
+
+  if (el._enterCb) {
+    return
+  }
+
+  var enterClass = data.enterClass;
+  var enterToClass = data.enterToClass;
+  var enterActiveClass = data.enterActiveClass;
+  var appearClass = data.appearClass;
+  var appearToClass = data.appearToClass;
+  var appearActiveClass = data.appearActiveClass;
+  var beforeEnter = data.beforeEnter;
+  var enter = data.enter;
+  var afterEnter = data.afterEnter;
+  var enterCancelled = data.enterCancelled;
+  var beforeAppear = data.beforeAppear;
+  var appear = data.appear;
+  var afterAppear = data.afterAppear;
+  var appearCancelled = data.appearCancelled;
+
+  var context = activeInstance;
+  var transitionNode = activeInstance.$vnode;
+  while (transitionNode && transitionNode.parent) {
+    transitionNode = transitionNode.parent;
+    context = transitionNode.context;
+  }
+
+  var isAppear = !context._isMounted || !vnode.isRootInsert;
+
+  // which means transition default apply to vnode
+  // when status change between enter and remove.
+  // Initial appear render do not have transition
+  if (isAppear && !appear && appear !== '') {
+    return
+  }
+
+  var startClass = isAppear && appearClass ? appearClass : enterClass;
+  var activeClass = isAppear && appearActiveClass ? appearActiveClass : enterActiveClass;
+  var toClass = isAppear && appearToClass ? appearToClass : enterToClass;
+
+  var beforeEnterHook = isAppear ? (beforeAppear || beforeEnter) : beforeEnter;
+  var enterHook = isAppear ? (typeof appear === 'function' ? appear : enter) : enter;
+  var afterEnterHook = isAppear ? (afterAppear || afterEnter) : afterEnter;
+  var enterCancelledHook = isAppear ? (appearCancelled || enterCancelled) : enterCancelled;
+
+  var userWantsControl = enterHook && (enterHook._length || enterHook.length) > 1;
+
+  var stylesheet$$1 = el._prevStyleSheet || {};
+  var startState = resolveClassValue(context, startClass);
+  var transitionProperties = normalizeTransitionProperties(resolveClassValue(context, activeClass));
+  var endState = getEnterTargetState(el, stylesheet$$1, startClass, toClass, activeClass, context);
+  var needAnimation = Object.keys(endState).length > 0;
+
+  var animationName;
+  var cb = el._enterCb = once(function () {
+    if (cb.cancelled) {
+      if (animationName) {
+        el.stopAnimation(animationName);
+      }
+
+      // el._prevStyleSheet = stylesheet
+      setStyle(el, stylesheet$$1);
+
+      enterCancelledHook && enterCancelledHook(el);
+    } else {
+      // el._prevStyleSheet = Object.assign(stylesheet, startState, endState)
+      afterEnterHook && afterEnterHook(el);
+    }
+    el._enterCb = null;
+  });
+
+  el.setTimeout(function () {
+    var parent = el.parentNode;
+    var pendingNode = parent && parent._pending && parent._pending[vnode.key];
+
+    if (pendingNode &&
+      pendingNode.context === vnode.context &&
+      pendingNode.tag === vnode.tag &&
+      pendingNode.elm._leaveCb
+    ) {
+      pendingNode.elm._leaveCb();
+    }
+
+    enterHook && enterHook(el, cb);
+    if (needAnimation) {
+      animationName = generateNodeAnimation(el, endState, transitionProperties, userWantsControl ? noop : cb);
+    } else if (!userWantsControl) {
+      cb();
+    }
+  }, 16);
+
+  // start enter transition
+  beforeEnterHook && beforeEnterHook(el);
+
+  if (startState) {
+    // el._prevStyleSheet = Object.assign({}, stylesheet, startState)
+    for (var key in startState) {
+      setStyle(el, key, startState[key]);
+    }
+  }
+
+  if (!needAnimation && !userWantsControl) {
+    cb();
+  }
+
+}
+
+function leave (vnode, rm) {
+  var el = vnode.elm;
+
+  // call enter callback now
+  if (el._enterCb) {
+    el._enterCb.cancelled = true;
+    el._enterCb();
+  }
+
+  var data = resolveTransition(vnode.data.transition);
+  if (!data) {
+    return rm()
+  }
+
+  if (el._leaveCb) {
+    return
+  }
+
+  var leaveClass = data.leaveClass;
+  var leaveToClass = data.leaveToClass;
+  var leaveActiveClass = data.leaveActiveClass;
+  var beforeLeave = data.beforeLeave;
+  var leave = data.leave;
+  var afterLeave = data.afterLeave;
+  var leaveCancelled = data.leaveCancelled;
+  var delayLeave = data.delayLeave;
+
+  var context = vnode.context;
+  var transitionNode = context.$vnode;
+  while (transitionNode && transitionNode.parent) {
+    transitionNode = transitionNode.parent;
+    context = transitionNode.context;
+  }
+
+  var userWantControl = leave && (leave._length || leave.length) > 1;
+
+  var stylesheet$$1 = el._prevStyleSheet || {};
+  var startState = resolveClassValue(context, leaveClass);
+  var transitionProperties = normalizeTransitionProperties(resolveClassValue(context, leaveActiveClass));
+  var endState = resolveClassValue(context, leaveToClass) || resolveClassValue(context, leaveActiveClass);
+
+  var leaveAnimationName;
+  var cb = el._leaveCb = once(function () {
+    if (el.parentNode && el.parentNode._pending) {
+      el.parentNode._pending[vnode.key] = null;
+    }
+    if (cb.cancelled) {
+      leaveAnimationName && el.stopAnimation(leaveAnimationName);
+
+      // el._prevStyleSheet = stylesheet
+      setStyle(el, stylesheet$$1);
+
+      leaveCancelled && leaveCancelled(el);
+    } else {
+      rm();
+      // el._prevStyleSheet = Object.assign(stylesheet, startState, endState)
+      afterLeave && afterLeave(el);
+    }
+    el._leaveCb = null;
+  });
+
+  if (delayLeave) {
+    delayLeave(performLeave);
+  } else {
+    performLeave();
+  }
+
+  function performLeave () {
+    if (cb.cancelled) {
+      return
+    }
+
+    // record leaving element
+    if (!vnode.data.show) {
+      (el.parentNode._pending || (el.parentNode._pending = {}))[vnode.key] = vnode;
+    }
+    beforeLeave && beforeLeave(el);
+
+    if (startState) {
+      el._prevStyleSheet = Object.assign({}, stylesheet$$1, startState);
+      generateNodeAnimation(el, startState, {}, next);
+    } else {
+      next();
+    }
+
+    function next() {
+      leaveAnimationName = generateNodeAnimation(
+        el,
+        endState,
+        transitionProperties,
+        userWantControl ? noop : cb
+      );
+    }
+
+    leave && leave(el, cb);
+    if (!endState && !userWantControl) {
+      cb();
+    }
+  }
+}
+
+function resolveClassValue (context, className) {
+  var StyleSheet = context.StyleSheet;
+
+  if (!StyleSheet) {
+    return {}
+  }
+
+  if (className.match(/^\d*$/)) {
+    return StyleSheet.flatten(className)
+  } else {
+    var resolveStyleId = context.styleScope && context.styleScope[className];
+    if (resolveStyleId == null) {
+      context = context.$parent;
+      resolveStyleId = context && context.styleScope && context.styleScope[className];
+    }
+    return StyleSheet.processStyle(StyleSheet.flatten(resolveStyleId) || {})
+  }
+}
+
+function normalizeTransitionProperties (activeState) {
+  if (!isPlainObject(activeState)) { return {} }
+
+  var transition = activeState.transition;
+
+  if (isPlainObject(transition)) { return transition }
+
+  // todo: string transition parser
+  if (typeof transition === 'string') {
+    return {}
+  } else {
+    return {}
+  }
+}
+
+// determine the target animation style for an entering transition.
+function getEnterTargetState (el, stylesheet$$1, startClass, endClass, activeClass, context) {
+  var targetState = {};
+
+  var startState = resolveClassValue(context, startClass);
+  var endState = resolveClassValue(context, endClass);
+  var activeState = resolveClassValue(context, activeClass);
+
+  if (startState) {
+    for (var key in startState) {
+      targetState[key] = stylesheet$$1[key];
+
+      if (
+        process.env.NODE_ENV !== 'production' &&
+        targetState[key] == null &&
+        (!activeState || activeState[key] == null) &&
+        (!endState || endState[key] == null)
+      ) {
+        warn(
+          "transition property \"" + key + "\" is declared in enter starting class (." + startClass + "), " +
+          "but not declared anywhere in enter ending class (." + endClass + "), " +
+          "enter active cass (." + activeClass + ") or the element's default styling. " +
+          "Note in Weex, CSS properties need explicit values to be transitionable."
+        );
+      }
+    }
+  }
+
+  if (activeState) {
+    for (var key$1 in activeState) {
+      if (key$1.indexOf('transition') < 0) {
+        targetState[key$1] = activeState[key$1];
+      }
+    }
+  }
+
+  if (endState) {
+    extend(targetState, endState);
+  }
+
+  return targetState
+}
+
+function generateNodeAnimation (el, styles, animationProperties, done) {
+  if (!styles) { return }
+
+  var name = ++animationUid;
+  var styleNames = Object.keys(styles);
+  var styleLength = styleNames.length;
+  var completedStyleAnimation = 0;
+
+  function animationEndListener () {
+    ++completedStyleAnimation;
+    if (completedStyleAnimation >= styleLength) { done(); }
+  }
+
+  function addAnimation(styleName, styleVal, cb) {
+    if (!styleName || styleVal === undefined) { return cb() }
+
+    el.addAnimation(
+      name,
+      styleName,
+      animationProperties.easing || 'linear',
+      'current',
+      styleVal,
+      animationProperties.duration || 0,
+      {
+        beginTime: animationProperties.delay || 0,
+        onfinished: function (/*e*/) {
+          cb();
+        }
+      }
+    );
+  }
+
+  for (var i = 0; i < styleLength; ++i) {
+    var styleName = styleNames[i];
+    var styleValue = styles[styleName];
+
+    if (styleName === 'backgroundColor' || styleName === 'background-color') {
+      var rgbaArray = styleValue.match(/\((.*)\)/)[1].split(',').map(function (v) { return v ? v.trim() : undefined; });
+
+      var completedRgbaAnimation = 0;
+      var rgbaAnimationEndListener = function () {
+        if (++completedRgbaAnimation >= 4) {
+          animationEndListener();
+        }
+      };
+
+      addAnimation('bkcolor-r', rgbaArray[0], rgbaAnimationEndListener);
+      addAnimation('bkcolor-g', rgbaArray[1], rgbaAnimationEndListener);
+      addAnimation('bkcolor-b', rgbaArray[2], rgbaAnimationEndListener);
+      addAnimation('bkcolor-a', rgbaArray[3], rgbaAnimationEndListener);
+
+    } else {
+      addAnimation(styleName, styleValue, animationEndListener);
+    }
+  }
+
+  el.startAnimation(name);
+  return name
+}
+
+var transition = {
+  create: enter,
+  activate: enter,
+  remove: leave
+};
+
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-var platformModules = [xTemplate, attrs, events, stylesheet];
+var platformModules = [xTemplate, attrs, events, stylesheet, transition];
 
 /*  */
 
@@ -5966,11 +6394,210 @@ var patch = createPatchFunction({ nodeOps: nodeOps, modules: modules });
 
 var platformDirectives = [];
 
+/*  */
+
+// Provides transition support for a single element/component.
+// supports transition mode (out-in / in-out)
+
+var transitionProps = {
+  name: String,
+  appear: Boolean,
+  css: Boolean,
+  mode: String,
+  type: String,
+  enterClass: String,
+  leaveClass: String,
+  enterToClass: String,
+  leaveToClass: String,
+  enterActiveClass: String,
+  leaveActiveClass: String,
+  appearClass: String,
+  appearActiveClass: String,
+  appearToClass: String,
+  duration: [Number, String, Object]
+};
+
+// in case the child is also an abstract component, e.g. <keep-alive>
+// we want to recursively retrieve the real component to be rendered
+function getRealChild (vnode) {
+  var compOptions = vnode && vnode.componentOptions;
+  if (compOptions && compOptions.Ctor.options.abstract) {
+    return getRealChild(getFirstComponentChild(compOptions.children))
+  } else {
+    return vnode
+  }
+}
+
+function extractTransitionData (comp) {
+  var data = {};
+  var options = comp.$options;
+  // props
+  for (var key in options.propsData) {
+    data[key] = comp[key];
+  }
+  // events.
+  // extract listeners and pass them directly to the transition methods
+  var listeners = options._parentListeners;
+  for (var key$1 in listeners) {
+    data[camelize(key$1)] = listeners[key$1];
+  }
+  return data
+}
+
+function placeholder (h, rawChild) {
+  if (/\d-keep-alive$/.test(rawChild.tag)) {
+    return h('keep-alive', {
+      props: rawChild.componentOptions.propsData
+    })
+  }
+}
+
+function hasParentTransition (vnode) {
+  while ((vnode = vnode.parent)) {
+    if (vnode.data.transition) {
+      return true
+    }
+  }
+}
+
+function isSameChild (child, oldChild) {
+  return oldChild.key === child.key && oldChild.tag === child.tag
+}
+
+function isAsyncPlaceholder (node) {
+  return node.isComment && node.asyncFactory
+}
+
+var Transition$1 = {
+  name: 'transition',
+  props: transitionProps,
+  abstract: true,
+
+  render: function render (h) {
+    var this$1 = this;
+
+    var children = this.$options._renderChildren;
+    if (!children) {
+      return
+    }
+
+    // filter out text nodes (possible whitespaces)
+    children = children.filter(function (c) { return c.tag || isAsyncPlaceholder(c); });
+    /* istanbul ignore if */
+    if (!children.length) {
+      return
+    }
+
+    // warn multiple elements
+    if (process.env.NODE_ENV !== 'production' && children.length > 1) {
+      warn(
+        '<transition> can only be used on a single element. Use ' +
+        '<transition-group> for lists.',
+        this.$parent
+      );
+    }
+
+    var mode = this.mode;
+
+    // warn invalid mode
+    if (process.env.NODE_ENV !== 'production' &&
+      mode && mode !== 'in-out' && mode !== 'out-in'
+    ) {
+      warn(
+        'invalid <transition> mode: ' + mode,
+        this.$parent
+      );
+    }
+
+    var rawChild = children[0];
+
+    // if this is a component root node and the component's
+    // parent container node also has transition, skip.
+    if (hasParentTransition(this.$vnode)) {
+      return rawChild
+    }
+
+    // apply transition data to child
+    // use getRealChild() to ignore abstract components e.g. keep-alive
+    var child = getRealChild(rawChild);
+    /* istanbul ignore if */
+    if (!child) {
+      return rawChild
+    }
+
+    if (this._leaving) {
+      return placeholder(h, rawChild)
+    }
+
+    // ensure a key that is unique to the vnode type and to this transition
+    // component instance. This key will be used to remove pending leaving nodes
+    // during entering.
+    var id = "__transition-" + (this._uid) + "-";
+    child.key = child.key == null
+      ? child.isComment
+        ? id + 'comment'
+        : id + child.tag
+      : isPrimitive(child.key)
+        ? (String(child.key).indexOf(id) === 0 ? child.key : id + child.key)
+        : child.key;
+
+    var data = (child.data || (child.data = {})).transition = extractTransitionData(this);
+    var oldRawChild = this._vnode;
+    var oldChild = getRealChild(oldRawChild);
+
+    // mark v-show
+    // so that the transition module can hand over the control to the directive
+    if (child.data.directives && child.data.directives.some(function (d) { return d.name === 'show'; })) {
+      child.data.show = true;
+    }
+
+    if (
+      oldChild &&
+      oldChild.data &&
+      !isSameChild(child, oldChild) &&
+      !isAsyncPlaceholder(oldChild)
+    ) {
+      // replace old child transition data with fresh one
+      // important for dynamic transitions!
+      var oldData = oldChild && (oldChild.data.transition = extend({}, data));
+      // handle transition mode
+      if (mode === 'out-in') {
+        // return placeholder node and queue update when leave finishes
+        this._leaving = true;
+        mergeVNodeHook(oldData, 'afterLeave', function () {
+          this$1._leaving = false;
+          this$1.$forceUpdate();
+        });
+        return placeholder(h, rawChild)
+      } else if (mode === 'in-out') {
+        if (isAsyncPlaceholder(child)) {
+          return oldRawChild
+        }
+        var delayedLeave;
+        var performLeave = function () { delayedLeave(); };
+        mergeVNodeHook(data, 'afterEnter', performLeave);
+        mergeVNodeHook(data, 'enterCancelled', performLeave);
+        mergeVNodeHook(oldData, 'delayLeave', function (leave) { delayedLeave = leave; });
+      }
+    }
+
+    return rawChild
+  }
+};
+
+/**
+ * Created by zhiyuan.huang@rdder.com on 17/6/28.
+ */
+
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-var platformComponents = [];
+// import TransitionGroup from './transition-group'
+
+var platformComponents = {
+  Transition: Transition$1
+};
 
 /**
  * 
@@ -8725,9 +9352,9 @@ var emptyObject$1 = {};
 function register (object) {
   var id = ++uniqueID;
 
-  if (process.env.NODE_ENV !== 'production') {
-    Object.freeze(object);
-  }
+  // if (process.env.NODE_ENV !== 'production') {
+  //   Object.freeze(object)
+  // }
 
   objects[id] = object;
   return id
@@ -9114,21 +9741,18 @@ function int32ColorToRgba(val) {
   var g = aRgbInt10ColorArray[2];
   var b = aRgbInt10ColorArray[3];
 
-  if (a !== undefined) {
-    a = parseInt(a, 16);
-
-    if (a >= 255) { a = 1; }
-    else if (a <= 0) { a = 0; }
-    else { a = (a / 255).toFixed(2); }
-  } else {
-    a = 1;
-  }
-
-  r = r ? parseInt(r, 16) : 0;
-  g = g ? parseInt(g, 16) : 0;
-  b = b ? parseInt(b, 16) : 0;
+  a = a ? validateColorHexValue(parseInt(a, 16)) : 0;
+  r = r ? validateColorHexValue(parseInt(r, 16)) : 0;
+  g = g ? validateColorHexValue(parseInt(g, 16)) : 0;
+  b = b ? validateColorHexValue(parseInt(b, 16)) : 0;
 
   return ("rgba(" + ([r, g, b, a].join(', ')) + ")")
+}
+
+function validateColorHexValue(val) {
+  if (val > 255) { return 255 }
+  else if (val < 0) { return 0 }
+  else { return val }
 }
 
 /**
@@ -9148,6 +9772,7 @@ function processStyle(styles) {
   for (var type in styles) {
     processStyleType(type, styles);
   }
+  return styles
 }
 
 function processStyleType(type, styles) {
@@ -9207,7 +9832,7 @@ function flatten (style) {
 }
 
 function install (Vue) {
-  Vue.StyleSheet = {
+  Vue.prototype.StyleSheet = {
     addValidStylePropTypes: addValidStylePropTypes,
     validateStyle: validateStyle,
 
@@ -9227,15 +9852,6 @@ function install (Vue) {
     }
   };
 }
-
-var index$2 = {
-  install: install
-};
-
-
-var StyleSheet = Object.freeze({
-	default: index$2
-});
 
 /**
  * 
@@ -9313,7 +9929,9 @@ function getOuterTemplate (el) {
 
 Vue$2.compile = compileToFunctions;
 
-Vue$2.use(StyleSheet);
+Vue$2.use({
+  install: install
+});
 
 exports.Vue = Vue$2;
 

@@ -32,19 +32,16 @@ function int32ColorToRgba(val) {
   let g = aRgbInt10ColorArray[2]
   let b = aRgbInt10ColorArray[3]
 
-  if (a !== undefined) {
-    a = parseInt(a, 16)
-
-    if (a >= 255) a = 1
-    else if (a <= 0) a = 0
-    else a = (a / 255).toFixed(2)
-  } else {
-    a = 1
-  }
-
-  r = r ? parseInt(r, 16) : 0
-  g = g ? parseInt(g, 16) : 0
-  b = b ? parseInt(b, 16) : 0
+  a = a ? validateColorHexValue(parseInt(a, 16)) : 0
+  r = r ? validateColorHexValue(parseInt(r, 16)) : 0
+  g = g ? validateColorHexValue(parseInt(g, 16)) : 0
+  b = b ? validateColorHexValue(parseInt(b, 16)) : 0
 
   return `rgba(${[r, g, b, a].join(', ')})`
+}
+
+function validateColorHexValue(val) {
+  if (val > 255) return 255
+  else if (val < 0) return 0
+  else return val
 }

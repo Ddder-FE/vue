@@ -8,5 +8,6 @@ import xTemplate from './xTemplate'
 import attrs from './attrs'
 import events from './events'
 import stylesheet from './stylesheet'
+import transition from './transition'
 
-export default [xTemplate, attrs, events, stylesheet]
+export default [xTemplate, attrs, events, stylesheet, transition]

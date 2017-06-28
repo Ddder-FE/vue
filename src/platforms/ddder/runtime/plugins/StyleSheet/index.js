@@ -37,8 +37,8 @@ function flatten (style) {
   return result
 }
 
-function install (Vue) {
-  Vue.StyleSheet = {
+export function install (Vue) {
+  Vue.prototype.StyleSheet = {
     addValidStylePropTypes,
     validateStyle,
 
@@ -57,8 +57,4 @@ function install (Vue) {
       return result
     }
   }
-}
-
-export default {
-  install
 }

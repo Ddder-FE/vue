@@ -9,7 +9,7 @@ import { isUndef, cached } from 'shared/util'
 import updateClass from './class'
 import updateStyle from './style'
 
-function setStyle (elm, name, val) {
+export function setStyle (elm, name, val) {
   if (!elm) return
   if (!name) return
 
@@ -43,9 +43,13 @@ function updateStyleSheet (oldVnode, vnode) {
   if (!newClassString && !newStyle) return
 
   const context = vnode.context
-  const StyleSheet = context.constructor.StyleSheet
+  const StyleSheet = context.StyleSheet
 
-  if (!StyleSheet) return setStyle(el, newStyle)
+  if (!StyleSheet) {
+    // todo: should compare prevStyleSheet with newStyle, and patch style diff
+    el._prevStyleSheet = newStyle
+    return setStyle(el, newStyle)
+  }
 
   const styleList = []
 

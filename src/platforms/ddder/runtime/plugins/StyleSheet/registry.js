@@ -13,9 +13,9 @@ const emptyObject = {}
 export function register (object: Object) {
   const id = ++uniqueID
 
-  if (process.env.NODE_ENV !== 'production') {
-    Object.freeze(object)
-  }
+  // if (process.env.NODE_ENV !== 'production') {
+  //   Object.freeze(object)
+  // }
 
   objects[id] = object
   return id

@@ -19,6 +19,7 @@ export function processStyle(styles) {
   for (const type in styles) {
     processStyleType(type, styles);
   }
+  return styles
 }
 
 export function processStyleType(type, styles) {
