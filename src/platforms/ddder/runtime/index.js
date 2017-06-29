@@ -15,7 +15,8 @@ import platformComponents from 'ddder/runtime/components/index'
 import {
   mustUseProp,
   isReservedTag,
-  isUnknownElement
+  isUnknownElement,
+  query
 } from 'ddder/util/index'
 
 // install platform specific utils
@@ -31,7 +32,7 @@ Vue.prototype.__patch__ = patch
 
 // wrap mount
 Vue.prototype.$mount = function (el?: any, hydrating?: boolean): Component {
-  return mountComponent(this, el, hydrating)
+  return mountComponent(this, el && query(el, this.$document), hydrating)
 }
 
 export default Vue

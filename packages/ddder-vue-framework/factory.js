@@ -6657,6 +6657,25 @@ var isUnaryTag = makeMap('input, img, stroke-canvas, audio, camera');
 
 var canBeLeftOpenTag = makeMap('');
 
+function query$1 (el, document) {
+  if (typeof el === 'string') {
+    var selected = document.getElementById(el);
+    if (!selected) {
+      process.env.NODE_ENV !== 'production' && warn(
+        'Cannot find element: ' + el
+      );
+
+      var $el = new renderer.Element('div');
+      $el.id = el;
+      document.appendChild($el);
+      return $el
+    }
+    return selected
+  } else {
+    return el
+  }
+}
+
 /*  */
 
 /**
@@ -6676,7 +6695,7 @@ Vue$2.prototype.__patch__ = patch;
 
 // wrap mount
 Vue$2.prototype.$mount = function (el, hydrating) {
-  return mountComponent(this, el, hydrating)
+  return mountComponent(this, el && query$1(el, this.$document), hydrating)
 };
 
 /**

@@ -192,7 +192,17 @@ const builds = {
     entry: resolve('ddder/entry-framework.js'),
     dest: resolve('packages/ddder-vue-framework/index.js'),
     format: 'cjs'
-  }
+  },
+  // Ddder compiler (CommonJS).
+  'ddder-compiler': {
+    ddder: true,
+    entry: resolve('ddder/entry-compiler.js'),
+    dest: resolve('packages/ddder-template-compiler/build.js'),
+    format: 'cjs',
+    alias: { he: resolve('ddder/compiler/util/entity-decoder.js') },
+    // external: Object.keys(require('../packages/ddder-template-compiler/package.json').dependencies),
+    plugins: [node(), cjs()]
+  },
 }
 
 function genConfig (name) {
