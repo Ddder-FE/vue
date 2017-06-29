@@ -61,16 +61,22 @@ export const canBeLeftOpenTag = makeMap('')
 
 export function query (el: string | Element, document: Object): Element {
   if (typeof el === 'string') {
-    const selected = document.getElementById(el)
-    if (!selected) {
-      process.env.NODE_ENV !== 'production' && warn(
-        'Cannot find element: ' + el
-      )
-
+    if (el === '__init__') {
       const $el = new renderer.Element('div')
-      $el.id = el
       document.appendChild($el)
       return $el
+    } else {
+      const selected = document.getElementById(el)
+      if (!selected) {
+        process.env.NODE_ENV !== 'production' && warn(
+          'Cannot find element: ' + el
+        )
+
+        const $el = new renderer.Element('div')
+        $el.id = el
+        document.appendChild($el)
+        return $el
+      }
     }
     return selected
   } else {

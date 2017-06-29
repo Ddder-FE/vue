@@ -95,6 +95,9 @@ function updateStyleSheet (oldVnode, vnode) {
 }
 
 export default {
-  create: updateStyleSheet,
+  // ddder 底层对样式的处理是：新增的样式不会影响已添加元素的样式，
+  // 而vue 中元素create 顺序是先childNodes 后parent，
+  // 所以，要在precreate hook 中添加样式
+  precreate: updateStyleSheet,
   update: updateStyleSheet
 }

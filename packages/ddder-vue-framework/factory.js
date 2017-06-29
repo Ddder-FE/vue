@@ -1992,6 +1992,9 @@ function normalizeArrayChildren (children, nestedIndex) {
 /*  */
 
 function ensureCtor (comp, base) {
+  if (comp.__esModule && comp.default) {
+    comp = comp.default;
+  }
   return isObject(comp)
     ? base.extend(comp)
     : comp
@@ -5942,7 +5945,10 @@ function updateStyleSheet (oldVnode, vnode) {
 }
 
 var stylesheet = {
-  create: updateStyleSheet,
+  // ddder 底层对样式的处理是：新增的样式不会影响已添加元素的样式，
+  // 而vue 中元素create 顺序是先childNodes 后parent，
+  // 所以，要在precreate hook 中添加样式
+  precreate: updateStyleSheet,
   update: updateStyleSheet
 };
 
@@ -6659,16 +6665,22 @@ var canBeLeftOpenTag = makeMap('');
 
 function query$1 (el, document) {
   if (typeof el === 'string') {
-    var selected = document.getElementById(el);
-    if (!selected) {
-      process.env.NODE_ENV !== 'production' && warn(
-        'Cannot find element: ' + el
-      );
-
+    if (el === '__init__') {
       var $el = new renderer.Element('div');
-      $el.id = el;
       document.appendChild($el);
       return $el
+    } else {
+      var selected$1 = document.getElementById(el);
+      if (!selected$1) {
+        process.env.NODE_ENV !== 'production' && warn(
+          'Cannot find element: ' + el
+        );
+
+        var $el$1 = new renderer.Element('div');
+        $el$1.id = el;
+        document.appendChild($el$1);
+        return $el$1
+      }
     }
     return selected
   } else {
