@@ -1,4 +1,5 @@
 /**
+ * @flow
  * Created by zhiyuan.huang@rdder.com on 17/6/28.
  */
 
@@ -6,6 +7,7 @@
 
 import { warn } from 'core/util/debug'
 import { extend, once, noop, isPlainObject } from 'shared/util'
+import { mergeVNodeHook } from 'core/vdom/helpers/index'
 import { activeInstance } from 'core/instance/lifecycle'
 import { resolveTransition } from 'web/runtime/transition-util'
 
@@ -13,7 +15,7 @@ import { setStyle } from './stylesheet'
 
 let animationUid = 0
 
-function enter (_, vnode) {
+export function enter (vnode, toggleDisplay: ?() => void) {
   const el = vnode.elm
 
   // call leave callback now
@@ -99,28 +101,31 @@ function enter (_, vnode) {
     el._enterCb = null
   })
 
+  if (!vnode.data.show) {
+    // remove pending leave element on enter by injecting an insert hook
+    mergeVNodeHook(vnode.data.hook || (vnode.data.hook = {}), 'insert', () => {
+      const parent = el.parentNode
+      const pendingNode = parent && parent._pending && parent._pending[vnode.key]
+      if (pendingNode &&
+        pendingNode.tag === vnode.tag &&
+        pendingNode.elm._leaveCb
+      ) {
+        pendingNode.elm._leaveCb()
+      }
+      enterHook && enterHook(el, cb)
+    })
+  }
+
+  // start enter transition
+  beforeEnterHook && beforeEnterHook(el)
+
   el.setTimeout(() => {
-    const parent = el.parentNode
-    const pendingNode = parent && parent._pending && parent._pending[vnode.key]
-
-    if (pendingNode &&
-      pendingNode.context === vnode.context &&
-      pendingNode.tag === vnode.tag &&
-      pendingNode.elm._leaveCb
-    ) {
-      pendingNode.elm._leaveCb()
-    }
-
-    enterHook && enterHook(el, cb)
-    if (needAnimation) {
+    if (!cb.cancelled && needAnimation) {
       animationName = generateNodeAnimation(el, endState, transitionProperties, userWantsControl ? noop : cb)
     } else if (!userWantsControl) {
       cb()
     }
   }, 16)
-
-  // start enter transition
-  beforeEnterHook && beforeEnterHook(el)
 
   if (startState) {
     // el._prevStyleSheet = Object.assign({}, stylesheet, startState)
@@ -129,13 +134,18 @@ function enter (_, vnode) {
     }
   }
 
+  if (vnode.data.show) {
+    toggleDisplay && toggleDisplay()
+    enterHook && enterHook(el, cb)
+  }
+
   if (!needAnimation && !userWantsControl) {
     cb()
   }
 
 }
 
-function leave (vnode, rm) {
+export function leave (vnode, rm) {
   const el = vnode.elm
 
   // call enter callback now
@@ -375,8 +385,14 @@ function generateNodeAnimation (el, styles, animationProperties, done) {
   return name
 }
 
+function _enter (_: any, vnode: VNodeWithData) {
+  if (vnode.data.show !== true) {
+    enter(vnode)
+  }
+}
+
 export default {
-  create: enter,
-  activate: enter,
+  create: _enter,
+  activate: _enter,
   remove: leave
 }

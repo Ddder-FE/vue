@@ -4,4 +4,8 @@
 
 'use strict'
 
-export default []
+import show from './show'
+
+export default {
+  show
+}

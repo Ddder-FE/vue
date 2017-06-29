@@ -6007,12 +6007,13 @@ var raf = inBrowser && window.requestAnimationFrame
   : setTimeout;
 
 /**
+ * 
  * Created by zhiyuan.huang@rdder.com on 17/6/28.
  */
 
 var animationUid = 0;
 
-function enter (_, vnode) {
+function enter (vnode, toggleDisplay) {
   var el = vnode.elm;
 
   // call leave callback now
@@ -6096,34 +6097,42 @@ function enter (_, vnode) {
     el._enterCb = null;
   });
 
+  if (!vnode.data.show) {
+    // remove pending leave element on enter by injecting an insert hook
+    mergeVNodeHook(vnode.data.hook || (vnode.data.hook = {}), 'insert', function () {
+      var parent = el.parentNode;
+      var pendingNode = parent && parent._pending && parent._pending[vnode.key];
+      if (pendingNode &&
+        pendingNode.tag === vnode.tag &&
+        pendingNode.elm._leaveCb
+      ) {
+        pendingNode.elm._leaveCb();
+      }
+      enterHook && enterHook(el, cb);
+    });
+  }
+
+  // start enter transition
+  beforeEnterHook && beforeEnterHook(el);
+
   el.setTimeout(function () {
-    var parent = el.parentNode;
-    var pendingNode = parent && parent._pending && parent._pending[vnode.key];
-
-    if (pendingNode &&
-      pendingNode.context === vnode.context &&
-      pendingNode.tag === vnode.tag &&
-      pendingNode.elm._leaveCb
-    ) {
-      pendingNode.elm._leaveCb();
-    }
-
-    enterHook && enterHook(el, cb);
-    if (needAnimation) {
+    if (!cb.cancelled && needAnimation) {
       animationName = generateNodeAnimation(el, endState, transitionProperties, userWantsControl ? noop : cb);
     } else if (!userWantsControl) {
       cb();
     }
   }, 16);
 
-  // start enter transition
-  beforeEnterHook && beforeEnterHook(el);
-
   if (startState) {
     // el._prevStyleSheet = Object.assign({}, stylesheet, startState)
     for (var key in startState) {
       setStyle(el, key, startState[key]);
     }
+  }
+
+  if (vnode.data.show) {
+    toggleDisplay && toggleDisplay();
+    enterHook && enterHook(el, cb);
   }
 
   if (!needAnimation && !userWantsControl) {
@@ -6370,9 +6379,15 @@ function generateNodeAnimation (el, styles, animationProperties, done) {
   return name
 }
 
+function _enter (_, vnode) {
+  if (vnode.data.show !== true) {
+    enter(vnode);
+  }
+}
+
 var transition = {
-  create: enter,
-  activate: enter,
+  create: _enter,
+  activate: _enter,
   remove: leave
 };
 
@@ -6395,10 +6410,95 @@ var modules = platformModules.concat(baseModules);
 var patch = createPatchFunction({ nodeOps: nodeOps, modules: modules });
 
 /**
+ * 
+ * Created by zhiyuan.huang@ddder.net on 17/6/29.
+ */
+
+// recursively search for possible transition defined inside the component root
+function locateNode (vnode) {
+  return vnode.componentInstance && (!vnode.data || !vnode.data.transition)
+    ? locateNode(vnode.componentInstance._vnode)
+    : vnode
+}
+
+function setElementDisplay (el, display) {
+  if (!display) { display = 'none'; }
+
+  if (display === 'none') {
+    el.visible = false;
+  } else {
+    if (!el.visible) { el.visible = true; }
+    el.setStyle('display:' + display);
+  }
+}
+
+function getElementDisplay (el) {
+  if (!el.visible) { return 'none' }
+  return el.display ? 'inline' : 'block'
+}
+
+var show = {
+  bind: function bind (el, ref, vnode) {
+    var value = ref.value;
+
+    vnode = locateNode(vnode);
+    var transition$$1 = vnode.data && vnode.data.transition;
+    var originalDisplay = el.__vOriginalDisplay = getElementDisplay(el);
+
+    if (value && transition$$1) {
+      vnode.data.show = true;
+      enter(vnode, function () {
+        setElementDisplay(el, originalDisplay);
+      });
+    } else {
+      setElementDisplay(el, originalDisplay);
+    }
+  },
+
+  update: function update (el, ref, vnode) {
+    var value = ref.value;
+    var oldValue = ref.oldValue;
+
+    /* istanbul ignore if */
+    if (value === oldValue) { return }
+    vnode = locateNode(vnode);
+    var transition$$1 = vnode.data && vnode.data.transition;
+    if (transition$$1) {
+      vnode.data.show = true;
+      if (value) {
+        enter(vnode, function () {
+          setElementDisplay(el, el.__vOriginalDisplay);
+        });
+      } else {
+        leave(vnode, function () {
+          setElementDisplay('none');
+        });
+      }
+    } else {
+      setElementDisplay(el, value ? el.__vOriginalDisplay : 'none');
+    }
+  },
+
+  unbind: function unbind (
+    el,
+    binding,
+    vnode,
+    oldVnode,
+    isDestroy
+  ) {
+    if (!isDestroy) {
+      setElementDisplay(el, el.__vOriginalDisplay);
+    }
+  }
+};
+
+/**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-var platformDirectives = [];
+var platformDirectives = {
+  show: show
+};
 
 /*  */
 
