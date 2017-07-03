@@ -2824,22 +2824,23 @@ Watcher.prototype.get = function get () {
   pushTarget(this);
   var value;
   var vm = this.vm;
-  if (this.user) {
-    try {
-      value = this.getter.call(vm, vm);
-    } catch (e) {
-      handleError(e, vm, ("getter for watcher \"" + (this.expression) + "\""));
-    }
-  } else {
+  try {
     value = this.getter.call(vm, vm);
+  } catch (e) {
+    if (this.user) {
+      handleError(e, vm, ("getter for watcher \"" + (this.expression) + "\""));
+    } else {
+      throw e
+    }
+  } finally {
+    // "touch" every property so they are all tracked as
+    // dependencies for deep watching
+    if (this.deep) {
+      traverse(value);
+    }
+    popTarget();
+    this.cleanupDeps();
   }
-  // "touch" every property so they are all tracked as
-  // dependencies for deep watching
-  if (this.deep) {
-    traverse(value);
-  }
-  popTarget();
-  this.cleanupDeps();
   return value
 };
 
@@ -4538,7 +4539,7 @@ Object.defineProperty(Vue$2.prototype, '$isServer', {
 Object.defineProperty(Vue$2.prototype, '$ssrContext', {
   get: function get () {
     /* istanbul ignore next */
-    return this.$vnode.ssrContext
+    return this.$vnode && this.$vnode.ssrContext
   }
 });
 
@@ -6013,6 +6014,10 @@ var raf = inBrowser && window.requestAnimationFrame
 
 var animationUid = 0;
 
+function generateAnimationName() {
+  return '__animation_' + ++animationUid + '__'
+}
+
 function enter (vnode, toggleDisplay) {
   var el = vnode.elm;
 
@@ -6322,7 +6327,7 @@ function getEnterTargetState (el, stylesheet$$1, startClass, endClass, activeCla
 function generateNodeAnimation (el, styles, animationProperties, done) {
   if (!styles) { return }
 
-  var name = ++animationUid;
+  var name = generateAnimationName();
   var styleNames = Object.keys(styles);
   var styleLength = styleNames.length;
   var completedStyleAnimation = 0;
@@ -6696,13 +6701,208 @@ var Transition$1 = {
  */
 
 /**
+ * 
+ * Created by zhiyuan.huang@rdder.com on 17/6/28.
+ */
+
+// Provides transition support for list items.
+// supports move transitions using the FLIP technique.
+
+// Because the vdom's children update algorithm is "unstable" - i.e.
+// it doesn't guarantee the relative positioning of removed elements,
+// we force transition-group to update its children into two passes:
+// in the first pass, we remove all nodes that need to be removed,
+// triggering their leaving transition; in the second pass, we insert/move
+// into the final desired state. This way in the second pass removed
+// nodes will remain where they should be.
+
+var NodePositionType = {
+  STATIC: 0,
+  ABSOLUTE: 1,
+  FIXED: 2
+};
+
+var props = extend({
+  tag: String,
+  moveClass: String
+}, transitionProps);
+
+delete props.mode;
+
+var TransitionGroup = {
+  props: props,
+
+  render: function render (h) {
+    var tag = this.tag || this.$vnode.data.tag || 'div';
+    var map = Object.create(null);
+    var prevChildren = this.prevChildren = this.children;
+    var rawChildren = this.$slots.default || [];
+    var children = this.children = [];
+    var transitionData = extractTransitionData(this);
+
+    for (var i = 0; i < rawChildren.length; i++) {
+      var c = rawChildren[i];
+      if (c.tag) {
+        if (c.key != null && String(c.key).indexOf('__vlist') !== 0) {
+          children.push(c);
+          map[c.key] = c
+          ;(c.data || (c.data = {})).transition = transitionData;
+        } else if (process.env.NODE_ENV !== 'production') {
+          var opts = c.componentOptions;
+          var name = opts ? (opts.Ctor.options.name || opts.tag || '') : c.tag;
+          warn(("<transition-group> children must be keyed: <" + name + ">"));
+        }
+      }
+    }
+
+    if (prevChildren) {
+      var kept = [];
+      var removed = [];
+      for (var i$1 = 0; i$1 < prevChildren.length; i$1++) {
+        var c$1 = prevChildren[i$1];
+        c$1.data.transition = transitionData;
+        c$1.data.pos = c$1.elm.getBoundingClientRect();
+        if (map[c$1.key]) {
+          kept.push(c$1);
+        } else {
+          removed.push(c$1);
+        }
+      }
+      this.kept = h(tag, null, kept);
+      this.removed = removed;
+
+      log('kept length', kept.length);
+      log('removed length', removed.length);
+    }
+
+    return h(tag, null, children)
+  },
+
+  beforeUpdate: function beforeUpdate () {
+    // force removing pass
+    this.__patch__(
+      this._vnode,
+      this.kept,
+      false, // hydrating
+      true // removeOnly (!important, avoids unnecessary moves)
+    );
+    this._vnode = this.kept;
+  },
+
+  updated: function updated () {
+    var children = this.prevChildren;
+    var moveClass = this.moveClass || ((this.name || 'v') + '-move');
+    var moveData = children.length && this.getMoveData(children[0].context, moveClass);
+    if (!moveData) {
+      return
+    }
+
+    // we divide the work into three loops to avoid mixing DOM reads and writes
+    // in each iteration - which helps prevent layout thrashing.
+    children.forEach(callPendingCbs);
+    children.forEach(recordPosition);
+    children.forEach(judgeMovable);
+
+    children.forEach(function (c) {
+      if (c.data.movable) {
+        var el = c.elm;
+        var oriPosition;
+
+        if (el.position === NodePositionType.STATIC) {
+          oriPosition = NodePositionType.STATIC;
+          el.setStyle('position: fixed');
+        }
+
+        var moveAnimationName = applyAnimation(el, c.data.pos, c.data.newPos, moveData, el._moveCb = function cb (e) {
+          if (!e) {
+            moveAnimationName && el.stopAnimation(moveAnimationName);
+          }
+
+          if (oriPosition !== undefined) {
+            el.setStyle('position: static');
+          }
+        });
+      }
+    });
+  },
+
+  methods: {
+    getMoveData: function getMoveData (context, moveClass) {
+      return normalizeTransitionProperties(resolveClassValue(context, moveClass))
+    }
+  }
+};
+
+function callPendingCbs (c) {
+  /* istanbul ignore if */
+  if (c.elm._moveCb) {
+    c.elm._moveCb();
+  }
+  /* istanbul ignore if */
+  if (c.elm._enterCb) {
+    c.elm._enterCb();
+  }
+}
+
+function recordPosition (c) {
+  c.data.newPos = c.elm.getBoundingClientRect();
+}
+
+function applyAnimation (el, startPos, endPos, animationProperties, cb) {
+  if (!startPos || !endPos) { return cb() }
+
+  var animationName = generateAnimationName();
+
+  function addAnimation(styleName, startVal, endVal, cb) {
+    if (!styleName || startVal === undefined || endVal === undefined) { return cb() }
+
+    el.addAnimation(
+      animationName,
+      styleName,
+      animationProperties.easing || 'linear',
+      startVal,
+      endVal,
+      animationProperties.duration || 0,
+      {
+        beginTime: animationProperties.delay || 0,
+        onfinished: function (/*e*/) {
+          cb();
+        }
+      }
+    );
+  }
+
+  var completedPositionAnimation = 0;
+  function animationEndListener () {
+    ++completedPositionAnimation;
+    if (completedPositionAnimation >= 2) { cb(); }
+  }
+
+  addAnimation('x', startPos.left, endPos.left, animationEndListener);
+  addAnimation('y', startPos.top, endPos.top, animationEndListener);
+
+  el.startAnimation(animationName);
+
+  return animationName
+}
+
+function judgeMovable (c) {
+  var oldPos = c.data.pos;
+  var newPos = c.data.newPos;
+  var dx = oldPos.left - newPos.left;
+  var dy = oldPos.top - newPos.top;
+  if (dx || dy) {
+    c.data.movable = true;
+  }
+}
+
+/**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-// import TransitionGroup from './transition-group'
-
 var platformComponents = {
-  Transition: Transition$1
+  Transition: Transition$1,
+  TransitionGroup: TransitionGroup
 };
 
 /**

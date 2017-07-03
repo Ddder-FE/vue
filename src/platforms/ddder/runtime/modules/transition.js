@@ -15,6 +15,10 @@ import { setStyle } from './stylesheet'
 
 let animationUid = 0
 
+export function generateAnimationName() {
+  return '__animation_' + ++animationUid + '__'
+}
+
 export function enter (vnode, toggleDisplay: ?() => void) {
   const el = vnode.elm
 
@@ -248,7 +252,7 @@ export function leave (vnode, rm) {
   }
 }
 
-function resolveClassValue (context, className) {
+export function resolveClassValue (context, className) {
   const StyleSheet = context.StyleSheet
 
   if (!StyleSheet) {
@@ -267,7 +271,7 @@ function resolveClassValue (context, className) {
   }
 }
 
-function normalizeTransitionProperties (activeState) {
+export function normalizeTransitionProperties (activeState) {
   if (!isPlainObject(activeState)) return {}
 
   let transition = activeState.transition
@@ -325,10 +329,10 @@ function getEnterTargetState (el, stylesheet, startClass, endClass, activeClass,
   return targetState
 }
 
-function generateNodeAnimation (el, styles, animationProperties, done) {
+export function generateNodeAnimation (el, styles, animationProperties, done) {
   if (!styles) return
 
-  const name = ++animationUid
+  const name = generateAnimationName()
   const styleNames = Object.keys(styles)
   const styleLength = styleNames.length
   let completedStyleAnimation = 0
