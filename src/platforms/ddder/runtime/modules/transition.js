@@ -82,9 +82,9 @@ export function enter (vnode, toggleDisplay: ?() => void) {
   const userWantsControl = enterHook && (enterHook._length || enterHook.length) > 1
 
   const stylesheet = el._prevStyleSheet || {}
-  const startState = resolveClassValue(context, startClass)
-  const transitionProperties = normalizeTransitionProperties(resolveClassValue(context, activeClass))
-  const endState = getEnterTargetState(el, stylesheet, startClass, toClass, activeClass, context)
+  const startState = resolveClassValue(vnode.context, startClass)
+  const transitionProperties = normalizeTransitionProperties(resolveClassValue(vnode.context, activeClass))
+  const endState = getEnterTargetState(el, stylesheet, startClass, toClass, activeClass, vnode.context)
   const needAnimation = Object.keys(endState).length > 0
 
   let animationName
@@ -188,9 +188,9 @@ export function leave (vnode, rm) {
   const userWantControl = leave && (leave._length || leave.length) > 1
 
   const stylesheet = el._prevStyleSheet || {}
-  const startState = resolveClassValue(context, leaveClass)
-  const transitionProperties = normalizeTransitionProperties(resolveClassValue(context, leaveActiveClass))
-  const endState = resolveClassValue(context, leaveToClass) || resolveClassValue(context, leaveActiveClass)
+  const startState = resolveClassValue(vnode.context, leaveClass)
+  const transitionProperties = normalizeTransitionProperties(resolveClassValue(vnode.context, leaveActiveClass))
+  const endState = resolveClassValue(vnode.context, leaveToClass) || resolveClassValue(vnode.context, leaveActiveClass)
 
   let leaveAnimationName
   const cb = el._leaveCb = once(() => {
@@ -329,12 +329,22 @@ function getEnterTargetState (el, stylesheet, startClass, endClass, activeClass,
   return targetState
 }
 
-export function generateNodeAnimation (el, styles, animationProperties, done) {
-  if (!styles) return
+export function generateNodeAnimation (el, styles, animationProperties, done = noop) {
+  if (!styles) {
+    done()
+    return
+  }
 
-  const name = generateAnimationName()
   const styleNames = Object.keys(styles)
   const styleLength = styleNames.length
+
+  if (!styleLength) {
+    done()
+    return
+  }
+
+  const name = generateAnimationName()
+
   let completedStyleAnimation = 0
 
   function animationEndListener () {

@@ -26,6 +26,7 @@ function isTrue (v) {
 function isFalse (v) {
   return v === false
 }
+
 /**
  * Check if value is primitive
  */
@@ -54,6 +55,14 @@ function isPlainObject (obj) {
 
 function isRegExp (v) {
   return _toString.call(v) === '[object RegExp]'
+}
+
+/**
+ * Check if val is a valid array index.
+ */
+function isValidArrayIndex (val) {
+  var n = parseFloat(val);
+  return n >= 0 && Math.floor(n) === n && isFinite(val)
 }
 
 /**
@@ -793,8 +802,6 @@ var arrayMethods = Object.create(arrayProto);[
     var inserted;
     switch (method) {
       case 'push':
-        inserted = args;
-        break
       case 'unshift':
         inserted = args;
         break
@@ -982,7 +989,7 @@ function defineReactive$$1 (
  * already exist.
  */
 function set (target, key, val) {
-  if (Array.isArray(target) && (typeof key === 'number' || /^\d+$/.test(key))) {
+  if (Array.isArray(target) && isValidArrayIndex(key)) {
     target.length = Math.max(target.length, key);
     target.splice(key, 1, val);
     return val
@@ -1012,7 +1019,7 @@ function set (target, key, val) {
  * Delete a property and trigger change if necessary.
  */
 function del (target, key) {
-  if (Array.isArray(target) && typeof key === 'number') {
+  if (Array.isArray(target) && isValidArrayIndex(key)) {
     target.splice(key, 1);
     return
   }
@@ -1699,9 +1706,11 @@ prototypeAccessors.child.get = function () {
 
 Object.defineProperties( VNode.prototype, prototypeAccessors );
 
-var createEmptyVNode = function () {
+var createEmptyVNode = function (text) {
+  if ( text === void 0 ) text = '';
+
   var node = new VNode();
-  node.text = '';
+  node.text = text;
   node.isComment = true;
   return node
 };
@@ -2708,7 +2717,7 @@ function callUpdatedHooks (queue) {
   while (i--) {
     var watcher = queue[i];
     var vm = watcher.vm;
-    if (vm._watcher === watcher && vm._isMounted) {
+    if (vm._watcher === watcher && vm._isMounted && !vm._isDestroyed) {
       callHook(vm, 'updated');
     }
   }
@@ -3817,7 +3826,7 @@ function renderSlot (
   if (scopedSlotFn) { // scoped slot
     props = props || {};
     if (bindObject) {
-      extend(props, bindObject);
+      props = extend(extend({}, bindObject), props);
     }
     return scopedSlotFn(props) || fallback
   } else {
@@ -3871,7 +3880,8 @@ function bindObjectProps (
   data,
   tag,
   value,
-  asProp
+  asProp,
+  isSync
 ) {
   if (value) {
     if (!isObject(value)) {
@@ -3884,7 +3894,7 @@ function bindObjectProps (
         value = toObject(value);
       }
       var hash;
-      for (var key in value) {
+      var loop = function ( key ) {
         if (
           key === 'class' ||
           key === 'style' ||
@@ -3899,8 +3909,17 @@ function bindObjectProps (
         }
         if (!(key in hash)) {
           hash[key] = value[key];
+
+          if (isSync) {
+            var on = data.on || (data.on = {});
+            on[("update:" + key)] = function ($event) {
+              value[key] = $event;
+            };
+          }
         }
-      }
+      };
+
+      for (var key in value) loop( key );
     }
   }
   return data
@@ -4219,13 +4238,11 @@ renderMixin(Vue$2);
 
 function initUse (Vue) {
   Vue.use = function (plugin) {
-    var cid = this.cid;
-    if (!plugin._installed) {
-      plugin._installed = {};
-    }
-    if (plugin._installed[cid]) {
+    var installedPlugins = (this._installedPlugins || (this._installedPlugins = []));
+    if (installedPlugins.indexOf(plugin) > -1) {
       return this
     }
+
     // additional parameters
     var args = toArray(arguments, 1);
     args.unshift(this);
@@ -4234,7 +4251,7 @@ function initUse (Vue) {
     } else if (typeof plugin === 'function') {
       plugin.apply(null, args);
     }
-    plugin._installed[cid] = true;
+    installedPlugins.push(plugin);
     return this
   };
 }
@@ -4385,14 +4402,16 @@ function initAssetRegisters (Vue) {
 
 /*  */
 
-var patternTypes = [String, RegExp];
+var patternTypes = [String, RegExp, Array];
 
 function getComponentName (opts) {
   return opts && (opts.Ctor.options.name || opts.tag)
 }
 
 function matches (pattern, name) {
-  if (typeof pattern === 'string') {
+  if (Array.isArray(pattern)) {
+    return pattern.indexOf(name) > -1
+  } else if (typeof pattern === 'string') {
     return pattern.split(',').indexOf(name) > -1
   } else if (isRegExp(pattern)) {
     return pattern.test(name)
@@ -6079,9 +6098,9 @@ function enter (vnode, toggleDisplay) {
   var userWantsControl = enterHook && (enterHook._length || enterHook.length) > 1;
 
   var stylesheet$$1 = el._prevStyleSheet || {};
-  var startState = resolveClassValue(context, startClass);
-  var transitionProperties = normalizeTransitionProperties(resolveClassValue(context, activeClass));
-  var endState = getEnterTargetState(el, stylesheet$$1, startClass, toClass, activeClass, context);
+  var startState = resolveClassValue(vnode.context, startClass);
+  var transitionProperties = normalizeTransitionProperties(resolveClassValue(vnode.context, activeClass));
+  var endState = getEnterTargetState(el, stylesheet$$1, startClass, toClass, activeClass, vnode.context);
   var needAnimation = Object.keys(endState).length > 0;
 
   var animationName;
@@ -6183,9 +6202,9 @@ function leave (vnode, rm) {
   var userWantControl = leave && (leave._length || leave.length) > 1;
 
   var stylesheet$$1 = el._prevStyleSheet || {};
-  var startState = resolveClassValue(context, leaveClass);
-  var transitionProperties = normalizeTransitionProperties(resolveClassValue(context, leaveActiveClass));
-  var endState = resolveClassValue(context, leaveToClass) || resolveClassValue(context, leaveActiveClass);
+  var startState = resolveClassValue(vnode.context, leaveClass);
+  var transitionProperties = normalizeTransitionProperties(resolveClassValue(vnode.context, leaveActiveClass));
+  var endState = resolveClassValue(vnode.context, leaveToClass) || resolveClassValue(vnode.context, leaveActiveClass);
 
   var leaveAnimationName;
   var cb = el._leaveCb = once(function () {
@@ -6325,11 +6344,23 @@ function getEnterTargetState (el, stylesheet$$1, startClass, endClass, activeCla
 }
 
 function generateNodeAnimation (el, styles, animationProperties, done) {
-  if (!styles) { return }
+  if ( done === void 0 ) done = noop;
 
-  var name = generateAnimationName();
+  if (!styles) {
+    done();
+    return
+  }
+
   var styleNames = Object.keys(styles);
   var styleLength = styleNames.length;
+
+  if (!styleLength) {
+    done();
+    return
+  }
+
+  var name = generateAnimationName();
+
   var completedStyleAnimation = 0;
 
   function animationEndListener () {
@@ -6770,9 +6801,6 @@ var TransitionGroup = {
       }
       this.kept = h(tag, null, kept);
       this.removed = removed;
-
-      log('kept length', kept.length);
-      log('removed length', removed.length);
     }
 
     return h(tag, null, children)
@@ -7126,6 +7154,9 @@ function parseHTML (html, options) {
           var commentEnd = html.indexOf('-->');
 
           if (commentEnd >= 0) {
+            if (options.shouldKeepComment) {
+              options.comment(html.substring(4, commentEnd));
+            }
             advance(commentEnd + 3);
             continue
           }
@@ -7266,7 +7297,7 @@ function parseHTML (html, options) {
       }
     }
 
-    var unary = isUnaryTag(tagName) || tagName === 'html' && lastTag === 'head' || !!unarySlash;
+    var unary = isUnaryTag(tagName) || !!unarySlash;
 
     var l = match.attrs.length;
     var attrs = new Array(l);
@@ -7801,6 +7832,7 @@ function parse (
     isUnaryTag: options.isUnaryTag,
     canBeLeftOpenTag: options.canBeLeftOpenTag,
     shouldDecodeNewlines: options.shouldDecodeNewlines,
+    shouldKeepComment: options.comments,
     start: function start (tag, attrs, unary) {
       // check namespace.
       // inherit parent ns if there is one
@@ -7989,6 +8021,13 @@ function parse (
           });
         }
       }
+    },
+    comment: function comment (text) {
+      currentParent.children.push({
+        type: 3,
+        text: text,
+        isComment: true
+      });
     }
   });
   return root
@@ -8571,7 +8610,7 @@ function genFilterCode (key) {
 
 function bind$1 (el, dir) {
   el.wrapData = function (code) {
-    return ("_b(" + code + ",'" + (el.tag) + "'," + (dir.value) + (dir.modifiers && dir.modifiers.prop ? ',true' : '') + ")")
+    return ("_b(" + code + ",'" + (el.tag) + "'," + (dir.value) + "," + (dir.modifiers && dir.modifiers.prop ? 'true' : 'false') + (dir.modifiers && dir.modifiers.sync ? ',true' : '') + ")")
   };
 }
 
@@ -8956,6 +8995,8 @@ function needsNormalization (el) {
 function genNode (node, state) {
   if (node.type === 1) {
     return genElement(node, state)
+  } if (node.type === 3 && node.isComment) {
+    return genComment(node)
   } else {
     return genText(node)
   }
@@ -8965,6 +9006,10 @@ function genText (text) {
   return ("_v(" + (text.type === 2
     ? text.expression // no need for () because already wrapped in _s()
     : transformSpecialNewlines(JSON.stringify(text.text))) + ")")
+}
+
+function genComment (comment) {
+  return ("_e('" + (comment.text) + "')")
 }
 
 function genSlot (el, state) {
