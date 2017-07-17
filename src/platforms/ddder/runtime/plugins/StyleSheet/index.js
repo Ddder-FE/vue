@@ -38,7 +38,8 @@ function flatten (style) {
 }
 
 export function install (Vue) {
-  Vue.prototype.StyleSheet = {
+  // export StyleSheet to Vue Global and Prototype
+  Vue.StyleSheet = Vue.prototype.StyleSheet = {
     addValidStylePropTypes,
     validateStyle,
 

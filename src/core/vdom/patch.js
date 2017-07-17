@@ -49,7 +49,8 @@ function sameVnode (a, b) {
 }
 
 function sameInputType (a, b) {
-  if (a.tag !== 'input') return true
+  // a.tag maybe undefined, and in ddder enviroment, input tag will get 'INPUT'
+  if (a.tag !== 'input' || a.tag !== 'INPUT') return true
   let i
   const typeA = isDef(i = a.data) && isDef(i = i.attrs) && i.type
   const typeB = isDef(i = b.data) && isDef(i = i.attrs) && i.type

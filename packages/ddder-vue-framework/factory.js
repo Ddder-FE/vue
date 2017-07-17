@@ -4792,7 +4792,8 @@ function sameVnode (a, b) {
 // Some browsers do not support dynamically changing type for <input>
 // so they need to be treated as different nodes
 function sameInputType (a, b) {
-  if (a.tag !== 'input') { return true }
+  // a.tag maybe undefined, and in ddder enviroment, input tag will get 'INPUT'
+  if (a.tag !== 'input' || a.tag !== 'INPUT') { return true }
   var i;
   var typeA = isDef(i = a.data) && isDef(i = i.attrs) && i.type;
   var typeB = isDef(i = b.data) && isDef(i = i.attrs) && i.type;
@@ -5952,18 +5953,14 @@ function updateStyle (oldVnode, vnode) {
  * Created by zhiyuan.huang@rdder.com on 17/6/22.
  */
 
-function setStyle (elm, name, val) {
+function setStyle (elm, styleSheet) {
   if (!elm) { return }
-  if (!name) { return }
 
-  if ({}.toString.apply(name) === '[object Object]') {
-    for (var type in name) {
-      setStyle(elm, type, name[type]);
-    }
-    return
+  if (typeof styleSheet === 'string' && arguments[2] !== undefined) {
+    elm.setStyle([normalizeName(styleSheet), arguments[2]].join(':'));
+  } else {
+    elm.setStyle(serializeStyleObj(styleSheet));
   }
-
-  elm.setStyle(normalizeName(name) + ':' + val);
 }
 
 var hyphenateRE$1 = /([^-])([A-Z])/g;
@@ -5976,6 +5973,18 @@ var hyphenate$1 = cached(function (str) {
 
 function normalizeName (name) {
   return hyphenate$1(name)
+}
+
+function serializeStyleObj(styleSheet) {
+  var propNames = Object.keys[styleSheet];
+  var result = [];
+
+  for (var i = 0; i < propNames.length; ++i) {
+    var propName = propNames[i];
+    result.push(normalizeName(propName) + ':' + styleSheet[propName]);
+  }
+
+  return result.join(';')
 }
 
 function updateStyleSheet (oldVnode, vnode) {
@@ -6019,10 +6028,12 @@ function updateStyleSheet (oldVnode, vnode) {
 
   StyleSheet.processStyle(newStyleSheet);
 
+  var newStyleSheetBuffer = new StyleBuffer(el);
+
   for (var name in prevStyleSheet) {
     if (isUndef(newStyleSheet[name]) && prevStyleSheet[name]) {
       prevStyleSheet[name] = '';
-      setStyle(el, name, '');
+      newStyleSheetBuffer.add(name, '');
     }
   }
 
@@ -6032,10 +6043,27 @@ function updateStyleSheet (oldVnode, vnode) {
       var newVal = cur == null ? '' : cur;
 
       prevStyleSheet[name$1] = newVal;
-      setStyle(el, name$1, newVal);
+      newStyleSheetBuffer.add(name$1, newVal);
     }
   }
+
+  setStyle.apply(el, newStyleSheetBuffer.end());
 }
+
+function StyleBuffer(el) {
+  this.elm = el;
+  this.styleObj = {};
+}
+
+StyleBuffer.prototype.add = function(name, value) {
+  if ( value === void 0 ) value = '';
+
+  this.styleObj[name] = value;
+};
+
+StyleBuffer.prototype.end = function() {
+  return [this.elm, this.styleObj]
+};
 
 var stylesheet = {
   // ddder 底层对样式的处理是：新增的样式不会影响已添加元素的样式，
@@ -10307,7 +10335,8 @@ function flatten (style) {
 }
 
 function install (Vue) {
-  Vue.prototype.StyleSheet = {
+  // export StyleSheet to Vue Global and Prototype
+  Vue.StyleSheet = Vue.prototype.StyleSheet = {
     addValidStylePropTypes: addValidStylePropTypes,
     validateStyle: validateStyle,
 
@@ -10326,6 +10355,7 @@ function install (Vue) {
       return result
     }
   };
+
 }
 
 /**

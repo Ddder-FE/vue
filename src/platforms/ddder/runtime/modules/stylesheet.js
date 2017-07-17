@@ -9,18 +9,14 @@ import { isUndef, cached } from 'shared/util'
 import updateClass from './class'
 import updateStyle from './style'
 
-export function setStyle (elm, name, val) {
+export function setStyle (elm, styleSheet) {
   if (!elm) return
-  if (!name) return
 
-  if ({}.toString.apply(name) === '[object Object]') {
-    for (const type in name) {
-      setStyle(elm, type, name[type])
-    }
-    return
+  if (typeof styleSheet === 'string' && arguments[2] !== undefined) {
+    elm.setStyle([normalizeName(styleSheet), arguments[2]].join(':'))
+  } else {
+    elm.setStyle(serializeStyleObj(styleSheet))
   }
-
-  elm.setStyle(normalizeName(name) + ':' + val)
 }
 
 const hyphenateRE = /([^-])([A-Z])/g
@@ -33,6 +29,18 @@ const hyphenate = cached(str => {
 
 function normalizeName (name) {
   return hyphenate(name)
+}
+
+function serializeStyleObj (styleSheet) {
+  const propNames = Object.keys[styleSheet]
+  const result = []
+
+  for (let i = 0; i < propNames.length; ++i) {
+    const propName = propNames[i]
+    result.push(normalizeName(propName) + ':' + styleSheet[propName])
+  }
+
+  return result.join(';')
 }
 
 function updateStyleSheet (oldVnode, vnode) {
@@ -76,10 +84,12 @@ function updateStyleSheet (oldVnode, vnode) {
 
   StyleSheet.processStyle(newStyleSheet)
 
+  const newStyleSheetBuffer = new StyleBuffer(el)
+
   for (const name in prevStyleSheet) {
     if (isUndef(newStyleSheet[name]) && prevStyleSheet[name]) {
       prevStyleSheet[name] = ''
-      setStyle(el, name, '')
+      newStyleSheetBuffer.add(name, '')
     }
   }
 
@@ -89,9 +99,24 @@ function updateStyleSheet (oldVnode, vnode) {
       const newVal = cur == null ? '' : cur
 
       prevStyleSheet[name] = newVal
-      setStyle(el, name, newVal)
+      newStyleSheetBuffer.add(name, newVal)
     }
   }
+
+  setStyle.apply(el, newStyleSheetBuffer.end())
+}
+
+function StyleBuffer (el) {
+  this.elm = el
+  this.styleObj = {}
+}
+
+StyleBuffer.prototype.add = function (name, value = '') {
+  this.styleObj[name] = value
+}
+
+StyleBuffer.prototype.end = function () {
+  return [this.elm, this.styleObj]
 }
 
 export default {
