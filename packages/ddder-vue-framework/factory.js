@@ -5975,8 +5975,8 @@ function normalizeName (name) {
   return hyphenate$1(name)
 }
 
-function serializeStyleObj(styleSheet) {
-  var propNames = Object.keys[styleSheet];
+function serializeStyleObj (styleSheet) {
+  var propNames = Object.keys(styleSheet);
   var result = [];
 
   for (var i = 0; i < propNames.length; ++i) {
@@ -6050,18 +6050,18 @@ function updateStyleSheet (oldVnode, vnode) {
   setStyle.apply(el, newStyleSheetBuffer.end());
 }
 
-function StyleBuffer(el) {
+function StyleBuffer (el) {
   this.elm = el;
   this.styleObj = {};
 }
 
-StyleBuffer.prototype.add = function(name, value) {
+StyleBuffer.prototype.add = function (name, value) {
   if ( value === void 0 ) value = '';
 
   this.styleObj[name] = value;
 };
 
-StyleBuffer.prototype.end = function() {
+StyleBuffer.prototype.end = function () {
   return [this.elm, this.styleObj]
 };
 
@@ -10355,7 +10355,6 @@ function install (Vue) {
       return result
     }
   };
-
 }
 
 /**

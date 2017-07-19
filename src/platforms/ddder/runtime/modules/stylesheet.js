@@ -32,7 +32,7 @@ function normalizeName (name) {
 }
 
 function serializeStyleObj (styleSheet) {
-  const propNames = Object.keys[styleSheet]
+  const propNames = Object.keys(styleSheet)
   const result = []
 
   for (let i = 0; i < propNames.length; ++i) {
