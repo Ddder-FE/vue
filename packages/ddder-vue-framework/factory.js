@@ -6240,7 +6240,7 @@ function enter (vnode, toggleDisplay) {
   // start enter transition
   beforeEnterHook && beforeEnterHook(el);
 
-  el.setTimeout(function () {
+  setTimeout(function () {
     if (!cb.cancelled && needAnimation) {
       animationName = generateNodeAnimation(el, endState, transitionProperties, userWantsControl ? noop : cb);
     } else if (!userWantsControl) {

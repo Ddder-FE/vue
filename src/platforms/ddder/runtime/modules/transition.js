@@ -15,7 +15,7 @@ import { setStyle } from './stylesheet'
 
 let animationUid = 0
 
-export function generateAnimationName() {
+export function generateAnimationName () {
   return '__animation_' + ++animationUid + '__'
 }
 
@@ -123,7 +123,7 @@ export function enter (vnode, toggleDisplay: ?() => void) {
   // start enter transition
   beforeEnterHook && beforeEnterHook(el)
 
-  el.setTimeout(() => {
+  setTimeout(() => {
     if (!cb.cancelled && needAnimation) {
       animationName = generateNodeAnimation(el, endState, transitionProperties, userWantsControl ? noop : cb)
     } else if (!userWantsControl) {
@@ -146,7 +146,6 @@ export function enter (vnode, toggleDisplay: ?() => void) {
   if (!needAnimation && !userWantsControl) {
     cb()
   }
-
 }
 
 export function leave (vnode, rm) {
@@ -236,7 +235,7 @@ export function leave (vnode, rm) {
       next()
     }
 
-    function next() {
+    function next () {
       leaveAnimationName = generateNodeAnimation(
         el,
         endState,
@@ -274,7 +273,7 @@ export function resolveClassValue (context, className) {
 export function normalizeTransitionProperties (activeState) {
   if (!isPlainObject(activeState)) return {}
 
-  let transition = activeState.transition
+  const transition = activeState.transition
 
   if (isPlainObject(transition)) return transition
 
@@ -352,7 +351,7 @@ export function generateNodeAnimation (el, styles, animationProperties, done = n
     if (completedStyleAnimation >= styleLength) done()
   }
 
-  function addAnimation(styleName, styleVal, cb) {
+  function addAnimation (styleName, styleVal, cb) {
     if (!styleName || styleVal === undefined) return cb()
 
     el.addAnimation(
@@ -364,7 +363,7 @@ export function generateNodeAnimation (el, styles, animationProperties, done = n
       animationProperties.duration || 0,
       {
         beginTime: animationProperties.delay || 0,
-        onfinished: (/*e*/) => {
+        onfinished: (/* e */) => {
           cb()
         }
       }
@@ -376,7 +375,7 @@ export function generateNodeAnimation (el, styles, animationProperties, done = n
     const styleValue = styles[styleName]
 
     if (styleName === 'backgroundColor' || styleName === 'background-color') {
-      let rgbaArray = styleValue.match(/\((.*)\)/)[1].split(',').map(v => v ? v.trim() : undefined)
+      const rgbaArray = styleValue.match(/\((.*)\)/)[1].split(',').map(v => v ? v.trim() : undefined)
 
       let completedRgbaAnimation = 0
       const rgbaAnimationEndListener = () => {
@@ -389,7 +388,6 @@ export function generateNodeAnimation (el, styles, animationProperties, done = n
       addAnimation('bkcolor-g', rgbaArray[1], rgbaAnimationEndListener)
       addAnimation('bkcolor-b', rgbaArray[2], rgbaAnimationEndListener)
       addAnimation('bkcolor-a', rgbaArray[3], rgbaAnimationEndListener)
-
     } else {
       addAnimation(styleName, styleValue, animationEndListener)
     }
