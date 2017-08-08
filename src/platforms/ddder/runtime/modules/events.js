@@ -13,7 +13,7 @@ function add (
   once: boolean,
   capture: boolean,
   passive: boolean,
-  addition: ?string | boolean
+  addition: ?Array | boolean
 ) {
   if (once) {
     const oldHandler = handler
@@ -28,7 +28,7 @@ function add (
     }
   }
 
-  if (typeof addition) {
+  if (addition) {
     handler.addition = addition
   }
 

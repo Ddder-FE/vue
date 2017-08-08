@@ -1801,9 +1801,9 @@ var normalizeEvent = cached(function (name) {
   name = capture ? name.slice(1) : name;
   var addition = name.charAt(0) === '+';
   if (addition) {
-    name = name.slice(1);
-    var assign;
-    ((assign = name.split('.'), name = assign[0], addition = assign[1]));
+    name = name.slice(1)
+    ;var assign;
+    ((assign = name.split('_'), name = assign[0], addition = assign.slice(1)));
   }
 
   return {
@@ -5855,7 +5855,7 @@ function add$1 (
     };
   }
 
-  if (typeof addition) {
+  if (addition) {
     handler.addition = addition;
   }
 
@@ -7796,13 +7796,13 @@ function addHandler (
   if (modifiers && modifiers.custom) {
     delete modifiers.custom;
     modifiers.eventName = name;
-    name = '+custom.' + name;
+    name = '+custom_' + name;
   }
 
   if (modifiers && modifiers.notification) {
     delete modifiers.notification;
     modifiers.eventName = name;
-    name = '+notification.' + name;
+    name = '+notification_' + name;
   }
 
   // check capture modifier
