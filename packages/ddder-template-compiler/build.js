@@ -343,9 +343,6 @@ function parseHTML (html, options) {
     last = html;
     // Make sure we're not in a plaintext content element like script/style
     if (!lastTag || !isPlainTextElement(lastTag)) {
-      if (shouldIgnoreFirstNewline(lastTag, html)) {
-        advance(1);
-      }
       var textEnd = html.indexOf('<');
       if (textEnd === 0) {
         // Comment:
@@ -391,6 +388,9 @@ function parseHTML (html, options) {
         var startTagMatch = parseStartTag();
         if (startTagMatch) {
           handleStartTag(startTagMatch);
+          if (shouldIgnoreFirstNewline(lastTag, html)) {
+            advance(1);
+          }
           continue
         }
       }
@@ -1438,7 +1438,13 @@ function addHandler (
   if (modifiers && modifiers.custom) {
     delete modifiers.custom;
     modifiers.eventName = name;
-    name = 'custom';
+    name = '+custom.' + name;
+  }
+
+  if (modifiers && modifiers.notification) {
+    delete modifiers.notification;
+    modifiers.eventName = name;
+    name = '+notification.' + name;
   }
 
   // check capture modifier
@@ -1978,8 +1984,8 @@ function processAttrs (el) {
             );
           }
         }
-        if (!el.component && (
-          isProp || platformMustUseProp(el.tag, el.attrsMap.type, name)
+        if (isProp || (
+          !el.component && platformMustUseProp(el.tag, el.attrsMap.type, name)
         )) {
           addProp(el, name, value);
         } else {
@@ -2746,7 +2752,7 @@ function mergeDataOrFn (
     return function mergedDataFn () {
       return mergeData(
         typeof childVal === 'function' ? childVal.call(this) : childVal,
-        parentVal.call(this)
+        typeof parentVal === 'function' ? parentVal.call(this) : parentVal
       )
     }
   } else if (parentVal || childVal) {
@@ -2862,11 +2868,10 @@ strats.props =
 strats.methods =
 strats.inject =
 strats.computed = function (parentVal, childVal) {
-  if (!childVal) { return Object.create(parentVal || null) }
   if (!parentVal) { return childVal }
   var ret = Object.create(null);
   extend(ret, parentVal);
-  extend(ret, childVal);
+  if (childVal) { extend(ret, childVal); }
   return ret
 };
 strats.provide = mergeDataOrFn;
@@ -3313,7 +3318,7 @@ function genText (text) {
 }
 
 function genComment (comment) {
-  return ("_e('" + (comment.text) + "')")
+  return ("_e(" + (JSON.stringify(comment.text)) + ")")
 }
 
 function genSlot (el, state) {
@@ -3985,6 +3990,7 @@ var genGuard$1 = function (condition) { return ("if(" + condition + ")return nul
 
 // todo: need to normalize custom event name
 var customEventName = function (name) { return genGuard$1(("!($event instanceof CustomEvent) || $event.eventName.toLowerCase() !== '" + (name.toLowerCase()) + "'")); };
+var notificationEventName = function (name) { return genGuard$1(("!($event instanceof NotificationEvent) || $event.name.toLowerCase() !== '" + (name.toLowerCase()) + "'")); };
 
 var modifierCode$1 = {
   stop: '$event.cancelBubble = true;',
@@ -3997,6 +4003,11 @@ function eventModifier (name, modifiers) {
 
   if (name.match(/custom$/i)) {
     result += customEventName(modifiers.eventName);
+    delete modifiers.eventName;
+  }
+
+  if (name.match(/notification$/i)) {
+    result += notificationEventName(modifiers.eventName);
     delete modifiers.eventName;
   }
 

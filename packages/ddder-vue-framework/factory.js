@@ -1,5 +1,5 @@
 /*!
- * Vue.js v2.4.0
+ * Vue.js v2.4.2
  * (c) 2014-2017 Evan You
  * Released under the MIT License.
  */
@@ -31,7 +31,11 @@ function isFalse (v) {
  * Check if value is primitive
  */
 function isPrimitive (value) {
-  return typeof value === 'string' || typeof value === 'number'
+  return (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  )
 }
 
 /**
@@ -254,14 +258,30 @@ function genStaticKeys (modules) {
  * if they are plain objects, do they have the same shape?
  */
 function looseEqual (a, b) {
+  if (a === b) { return true }
   var isObjectA = isObject(a);
   var isObjectB = isObject(b);
   if (isObjectA && isObjectB) {
     try {
-      return JSON.stringify(a) === JSON.stringify(b)
+      var isArrayA = Array.isArray(a);
+      var isArrayB = Array.isArray(b);
+      if (isArrayA && isArrayB) {
+        return a.length === b.length && a.every(function (e, i) {
+          return looseEqual(e, b[i])
+        })
+      } else if (!isArrayA && !isArrayB) {
+        var keysA = Object.keys(a);
+        var keysB = Object.keys(b);
+        return keysA.length === keysB.length && keysA.every(function (key) {
+          return looseEqual(a[key], b[key])
+        })
+      } else {
+        /* istanbul ignore next */
+        return false
+      }
     } catch (e) {
-      // possible circular reference
-      return a === b
+      /* istanbul ignore next */
+      return false
     }
   } else if (!isObjectA && !isObjectB) {
     return String(a) === String(b)
@@ -1126,7 +1146,7 @@ function mergeDataOrFn (
     return function mergedDataFn () {
       return mergeData(
         typeof childVal === 'function' ? childVal.call(this) : childVal,
-        parentVal.call(this)
+        typeof parentVal === 'function' ? parentVal.call(this) : parentVal
       )
     }
   } else if (parentVal || childVal) {
@@ -1242,11 +1262,10 @@ strats.props =
 strats.methods =
 strats.inject =
 strats.computed = function (parentVal, childVal) {
-  if (!childVal) { return Object.create(parentVal || null) }
   if (!parentVal) { return childVal }
   var ret = Object.create(null);
   extend(ret, parentVal);
-  extend(ret, childVal);
+  if (childVal) { extend(ret, childVal); }
   return ret
 };
 strats.provide = mergeDataOrFn;
@@ -1780,11 +1799,19 @@ var normalizeEvent = cached(function (name) {
   name = once$$1 ? name.slice(1) : name;
   var capture = name.charAt(0) === '!';
   name = capture ? name.slice(1) : name;
+  var addition = name.charAt(0) === '+';
+  if (addition) {
+    name = name.slice(1);
+    var assign;
+    ((assign = name.split('.'), name = assign[0], addition = assign[1]));
+  }
+
   return {
     name: name,
     once: once$$1,
     capture: capture,
-    passive: passive
+    passive: passive,
+    addition: addition
   }
 });
 
@@ -1828,7 +1855,7 @@ function updateListeners (
       if (isUndef(cur.fns)) {
         cur = on[name] = createFnInvoker(cur);
       }
-      add(event.name, cur, event.once, event.capture, event.passive);
+      add(event.name, cur, event.once, event.capture, event.passive, event.addition);
     } else if (cur !== old) {
       old.fns = cur;
       on[name] = old;
@@ -3196,17 +3223,14 @@ function initComputed (vm, computed) {
   for (var key in computed) {
     var userDef = computed[key];
     var getter = typeof userDef === 'function' ? userDef : userDef.get;
-    if (process.env.NODE_ENV !== 'production') {
-      if (getter === undefined) {
-        warn(
-          ("No getter function has been defined for computed property \"" + key + "\"."),
-          vm
-        );
-        getter = noop;
-      }
+    if (process.env.NODE_ENV !== 'production' && getter == null) {
+      warn(
+        ("Getter is missing for computed property \"" + key + "\"."),
+        vm
+      );
     }
     // create internal watcher for the computed property.
-    watchers[key] = new Watcher(vm, getter, noop, computedWatcherOptions);
+    watchers[key] = new Watcher(vm, getter || noop, noop, computedWatcherOptions);
 
     // component-defined computed properties are already defined on the
     // component prototype. We only need to define computed properties defined
@@ -3236,6 +3260,15 @@ function defineComputed (target, key, userDef) {
     sharedPropertyDefinition.set = userDef.set
       ? userDef.set
       : noop;
+  }
+  if (process.env.NODE_ENV !== 'production' &&
+      sharedPropertyDefinition.set === noop) {
+    sharedPropertyDefinition.set = function () {
+      warn(
+        ("Computed property \"" + key + "\" was assigned to but it has no setter."),
+        this
+      );
+    };
   }
   Object.defineProperty(target, key, sharedPropertyDefinition);
 }
@@ -3408,7 +3441,7 @@ function resolveInject (inject, vm) {
         }
         source = source.$parent;
       }
-      if (process.env.NODE_ENV !== 'production' && !hasOwn(result, key)) {
+      if (process.env.NODE_ENV !== 'production' && !source) {
         warn(("Injection \"" + key + "\" not found"), vm);
       }
     }
@@ -3601,8 +3634,12 @@ function createComponent (
     return createFunctionalComponent(Ctor, propsData, data, context, children)
   }
 
-  // keep listeners
+  // extract listeners, since these needs to be treated as
+  // child component listeners instead of DOM listeners
   var listeners = data.on;
+  // replace with listeners with .native modifier
+  // so it gets processed during parent component patch.
+  data.on = data.nativeOn;
 
   if (isTrue(Ctor.options.abstract)) {
     // abstract components do not keep anything
@@ -3681,7 +3718,7 @@ function mergeHook$1 (one, two) {
 function transformModel (options, data) {
   var prop = (options.model && options.model.prop) || 'value';
   var event = (options.model && options.model.event) || 'input';(data.props || (data.props = {}))[prop] = data.model.value
-  ;(options.props || (options.props = {}))[prop] = {type: null};
+  ;(options.props || (options.props = {}))[prop] = { type: null };
   var on = data.on || (data.on = {});
   if (isDef(on[event])) {
     on[event] = [data.model.callback].concat(on[event]);
@@ -4066,12 +4103,12 @@ function initRender (vm) {
     defineReactive$$1(vm, '$attrs', parentData && parentData.attrs, function () {
       !isUpdatingChildComponent && warn("$attrs is readonly.", vm);
     }, true);
-    defineReactive$$1(vm, '$listeners', parentData && parentData.on, function () {
+    defineReactive$$1(vm, '$listeners', vm.$options._parentListeners, function () {
       !isUpdatingChildComponent && warn("$listeners is readonly.", vm);
     }, true);
   } else {
     defineReactive$$1(vm, '$attrs', parentData && parentData.attrs, null, true);
-    defineReactive$$1(vm, '$listeners', parentData && parentData.on, null, true);
+    defineReactive$$1(vm, '$listeners', vm.$options._parentListeners, null, true);
   }
 }
 
@@ -4635,7 +4672,7 @@ Object.defineProperty(Vue$2.prototype, '$ssrContext', {
   }
 });
 
-Vue$2.version = '2.4.0';
+Vue$2.version = '2.4.2';
 
 /* globals renderer */
 // renderer is injected by ddder factory wrapper
@@ -5802,7 +5839,8 @@ function add$1 (
   handler,
   once$$1,
   capture,
-  passive
+  passive,
+  addition
 ) {
   if (once$$1) {
     var oldHandler = handler;
@@ -5816,6 +5854,11 @@ function add$1 (
       }
     };
   }
+
+  if (typeof addition) {
+    handler.addition = addition;
+  }
+
   target$1.addEventListener(
     event,
     handler,
@@ -6137,6 +6180,8 @@ var raf = inBrowser && window.requestAnimationFrame
  * 
  * Created by zhiyuan.huang@rdder.com on 17/6/28.
  */
+
+/* global renderer */
 
 function enter (vnode, toggleDisplay) {
   var el = vnode.elm;
@@ -6526,7 +6571,7 @@ var show = {
         setElementDisplay(el, originalDisplay);
       });
     } else {
-      setElementDisplay(el);
+      setElementDisplay(el, value ? originalDisplay : 'none');
     }
   },
 
@@ -6788,6 +6833,8 @@ var Transition$1 = {
  * Created by zhiyuan.huang@rdder.com on 17/6/28.
  */
 
+/* global renderer */
+
 // Provides transition support for list items.
 // supports move transitions using the FLIP technique.
 
@@ -6932,9 +6979,9 @@ function applyAnimation (el, startPos, endPos, animationProperties, cb) {
   if (!startPos || !endPos) { return cb() }
 
   return new renderer.Anime(el, {
-    translateX: [startPos.left, endPos.left],
-    translateY: [startPos.top, endPos.top]
-  }, animationProperties).onComplete(cb).play();
+    x: [startPos.left, endPos.left],
+    y: [startPos.top, endPos.top]
+  }, animationProperties).onComplete(cb).play()
 }
 
 function judgeMovable (c) {
@@ -7174,9 +7221,6 @@ function parseHTML (html, options) {
     last = html;
     // Make sure we're not in a plaintext content element like script/style
     if (!lastTag || !isPlainTextElement(lastTag)) {
-      if (shouldIgnoreFirstNewline(lastTag, html)) {
-        advance(1);
-      }
       var textEnd = html.indexOf('<');
       if (textEnd === 0) {
         // Comment:
@@ -7222,6 +7266,9 @@ function parseHTML (html, options) {
         var startTagMatch = parseStartTag();
         if (startTagMatch) {
           handleStartTag(startTagMatch);
+          if (shouldIgnoreFirstNewline(lastTag, html)) {
+            advance(1);
+          }
           continue
         }
       }
@@ -7749,7 +7796,13 @@ function addHandler (
   if (modifiers && modifiers.custom) {
     delete modifiers.custom;
     modifiers.eventName = name;
-    name = 'custom';
+    name = '+custom.' + name;
+  }
+
+  if (modifiers && modifiers.notification) {
+    delete modifiers.notification;
+    modifiers.eventName = name;
+    name = '+notification.' + name;
   }
 
   // check capture modifier
@@ -8289,8 +8342,8 @@ function processAttrs (el) {
             );
           }
         }
-        if (!el.component && (
-          isProp || platformMustUseProp(el.tag, el.attrsMap.type, name)
+        if (isProp || (
+          !el.component && platformMustUseProp(el.tag, el.attrsMap.type, name)
         )) {
           addProp(el, name, value);
         } else {
@@ -9085,7 +9138,7 @@ function genText (text) {
 }
 
 function genComment (comment) {
-  return ("_e('" + (comment.text) + "')")
+  return ("_e(" + (JSON.stringify(comment.text)) + ")")
 }
 
 function genSlot (el, state) {
@@ -9676,6 +9729,7 @@ var genGuard$1 = function (condition) { return ("if(" + condition + ")return nul
 
 // todo: need to normalize custom event name
 var customEventName = function (name) { return genGuard$1(("!($event instanceof CustomEvent) || $event.eventName.toLowerCase() !== '" + (name.toLowerCase()) + "'")); };
+var notificationEventName = function (name) { return genGuard$1(("!($event instanceof NotificationEvent) || $event.name.toLowerCase() !== '" + (name.toLowerCase()) + "'")); };
 
 var modifierCode$1 = {
   stop: '$event.cancelBubble = true;',
@@ -9688,6 +9742,11 @@ function eventModifier (name, modifiers) {
 
   if (name.match(/custom$/i)) {
     result += customEventName(modifiers.eventName);
+    delete modifiers.eventName;
+  }
+
+  if (name.match(/notification$/i)) {
+    result += notificationEventName(modifiers.eventName);
     delete modifiers.eventName;
   }
 

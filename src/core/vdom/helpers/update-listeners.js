@@ -7,7 +7,8 @@ const normalizeEvent = cached((name: string): {
   name: string,
   once: boolean,
   capture: boolean,
-  passive: boolean
+  passive: boolean,
+  addition: ?boolean | string
 } => {
   const passive = name.charAt(0) === '&'
   name = passive ? name.slice(1) : name
@@ -15,11 +16,17 @@ const normalizeEvent = cached((name: string): {
   name = once ? name.slice(1) : name
   const capture = name.charAt(0) === '!'
   name = capture ? name.slice(1) : name
+  let addition = name.charAt(0) === '+'
+  if (addition) {
+    name = name.slice(1)
+    ;([name, addition] = name.split('.'))
+  }
   return {
     name,
     once,
     capture,
-    passive
+    passive,
+    addition
   }
 })
 

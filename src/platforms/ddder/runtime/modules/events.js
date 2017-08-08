@@ -12,7 +12,8 @@ function add (
   handler: Function,
   once: boolean,
   capture: boolean,
-  passive: boolean
+  passive: boolean,
+  addition: ?string | boolean
 ) {
   if (once) {
     const oldHandler = handler
@@ -26,6 +27,11 @@ function add (
       }
     }
   }
+
+  if (typeof addition) {
+    handler.addition = addition
+  }
+
   target.addEventListener(
     event,
     handler,
