@@ -3,6 +3,8 @@
  * Created by zhiyuan.huang@rdder.com on 17/6/28.
  */
 
+/* global renderer */
+
 'use strict'
 
 // Provides transition support for list items.
@@ -18,7 +20,7 @@
 
 import { warn, extend } from 'core/util/index'
 import { transitionProps, extractTransitionData } from 'web/runtime/components/transition'
-import { generateAnimationName, resolveClassValue, normalizeTransitionProperties } from '../modules/transition'
+import { resolveClassValue, normalizeTransitionProperties } from '../modules/transition'
 
 const NodePositionType = {
   STATIC: 0,
@@ -110,13 +112,13 @@ export default {
         let oriPosition
 
         if (el.position === NodePositionType.STATIC) {
-          oriPosition = NodePositionType.STATIC;
+          oriPosition = NodePositionType.STATIC
           el.setStyle('position: fixed')
         }
 
-        const moveAnimationName = applyAnimation(el, c.data.pos, c.data.newPos, moveData, el._moveCb = function cb (e) {
+        const moveAnimation = applyAnimation(el, c.data.pos, c.data.newPos, moveData, el._moveCb = function cb (e) {
           if (!e) {
-            moveAnimationName && el.stopAnimation(moveAnimationName)
+            moveAnimation && moveAnimation.stop()
           }
 
           if (oriPosition !== undefined) {
@@ -152,39 +154,10 @@ function recordPosition (c: VNode) {
 function applyAnimation (el, startPos, endPos, animationProperties, cb) {
   if (!startPos || !endPos) return cb()
 
-  const animationName = generateAnimationName()
-
-  function addAnimation(styleName, startVal, endVal, cb) {
-    if (!styleName || startVal === undefined || endVal === undefined) return cb()
-
-    el.addAnimation(
-      animationName,
-      styleName,
-      animationProperties.easing || 'linear',
-      startVal,
-      endVal,
-      animationProperties.duration || 0,
-      {
-        beginTime: animationProperties.delay || 0,
-        onfinished: (/*e*/) => {
-          cb()
-        }
-      }
-    )
-  }
-
-  let completedPositionAnimation = 0
-  function animationEndListener () {
-    ++completedPositionAnimation
-    if (completedPositionAnimation >= 2) cb()
-  }
-
-  addAnimation('x', startPos.left, endPos.left, animationEndListener)
-  addAnimation('y', startPos.top, endPos.top, animationEndListener)
-
-  el.startAnimation(animationName)
-
-  return animationName
+  return new renderer.Anime(el, {
+    x: [startPos.left, endPos.left],
+    y: [startPos.top, endPos.top]
+  }, animationProperties).onComplete(cb).play()
 }
 
 function judgeMovable (c: VNode) {

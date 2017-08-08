@@ -21,6 +21,7 @@ var renderer = {
 function init (cfg) {
   renderer.Document = cfg.Document;
   renderer.Element = cfg.Element;
+  renderer.Anime = cfg.Anime;
 }
 
 function reset () {

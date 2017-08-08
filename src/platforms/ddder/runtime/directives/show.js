@@ -25,7 +25,7 @@ function setElementDisplay (el: any, display: string) {
   }
 }
 
-function getElementDisplay (el:any) {
+function getElementDisplay (el: any) {
   if (!el.visible) return 'none'
   return el.display ? 'inline' : 'block'
 }
@@ -42,7 +42,7 @@ export default {
         setElementDisplay(el, originalDisplay)
       })
     } else {
-      setElementDisplay(el, originalDisplay)
+      setElementDisplay(el, value ? originalDisplay : 'none')
     }
   },
 
@@ -59,7 +59,7 @@ export default {
         })
       } else {
         leave(vnode, () => {
-          setElementDisplay('none')
+          setElementDisplay(el)
         })
       }
     } else {

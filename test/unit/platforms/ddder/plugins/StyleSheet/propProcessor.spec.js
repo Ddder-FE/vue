@@ -14,7 +14,7 @@ describe('propProcessor', () => {
     }
 
     propProcessor.processStyle(style)
-    expect(style.backgroundColor).toBe('rgba(255, 255, 255, 1)')
-    expect(style.textColor).toBe('rgba(1, 100, 200, 1)')
+    expect(style.backgroundColor).toBe('rgba(255, 255, 255, 255)')
+    expect(style.textColor).toBe('rgba(1, 100, 200, 255)')
   })
 })

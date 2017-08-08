@@ -3680,7 +3680,8 @@ function mergeHook$1 (one, two) {
 // prop and event handler respectively.
 function transformModel (options, data) {
   var prop = (options.model && options.model.prop) || 'value';
-  var event = (options.model && options.model.event) || 'input';(data.props || (data.props = {}))[prop] = data.model.value;
+  var event = (options.model && options.model.event) || 'input';(data.props || (data.props = {}))[prop] = data.model.value
+  ;(options.props || (options.props = {}))[prop] = {type: null};
   var on = data.on || (data.on = {});
   if (isDef(on[event])) {
     on[event] = [data.model.callback].concat(on[event]);
@@ -5832,11 +5833,16 @@ function remove$2 (
 }
 
 function updateDOMListeners (oldVnode, vnode) {
+  var isComponentRoot = isDef(vnode.componentOptions);
+  var oldOn = isComponentRoot ? oldVnode.data.nativeOn : oldVnode.data.on;
+  var on = isComponentRoot ? vnode.data.nativeOn : vnode.data.on;
+
   if (isUndef(oldVnode.data.on) && isUndef(vnode.data.on)) {
     return
   }
-  var on = vnode.data.on || {};
-  var oldOn = oldVnode.data.on || {};
+
+  on = on || {};
+  oldOn = oldOn || {};
   target$1 = vnode.elm;
   normalizeEvents(on);
   updateListeners(on, oldOn, add$1, remove$2, vnode.context);
@@ -6132,12 +6138,6 @@ var raf = inBrowser && window.requestAnimationFrame
  * Created by zhiyuan.huang@rdder.com on 17/6/28.
  */
 
-var animationUid = 0;
-
-function generateAnimationName() {
-  return '__animation_' + ++animationUid + '__'
-}
-
 function enter (vnode, toggleDisplay) {
   var el = vnode.elm;
 
@@ -6204,11 +6204,11 @@ function enter (vnode, toggleDisplay) {
   var endState = getEnterTargetState(el, stylesheet$$1, startClass, toClass, activeClass, vnode.context);
   var needAnimation = Object.keys(endState).length > 0;
 
-  var animationName;
+  var animation;
   var cb = el._enterCb = once(function () {
     if (cb.cancelled) {
-      if (animationName) {
-        el.stopAnimation(animationName);
+      if (animation) {
+        animation.stop();
       }
 
       // el._prevStyleSheet = stylesheet
@@ -6242,7 +6242,7 @@ function enter (vnode, toggleDisplay) {
 
   setTimeout(function () {
     if (!cb.cancelled && needAnimation) {
-      animationName = generateNodeAnimation(el, endState, transitionProperties, userWantsControl ? noop : cb);
+      animation = generateNodeAnimation(el, endState, transitionProperties, userWantsControl ? noop : cb);
     } else if (!userWantsControl) {
       cb();
     }
@@ -6263,7 +6263,6 @@ function enter (vnode, toggleDisplay) {
   if (!needAnimation && !userWantsControl) {
     cb();
   }
-
 }
 
 function leave (vnode, rm) {
@@ -6307,13 +6306,13 @@ function leave (vnode, rm) {
   var transitionProperties = normalizeTransitionProperties(resolveClassValue(vnode.context, leaveActiveClass));
   var endState = resolveClassValue(vnode.context, leaveToClass) || resolveClassValue(vnode.context, leaveActiveClass);
 
-  var leaveAnimationName;
+  var leaveAnimation;
   var cb = el._leaveCb = once(function () {
     if (el.parentNode && el.parentNode._pending) {
       el.parentNode._pending[vnode.key] = null;
     }
     if (cb.cancelled) {
-      leaveAnimationName && el.stopAnimation(leaveAnimationName);
+      leaveAnimation && leaveAnimation.stop();
 
       // el._prevStyleSheet = stylesheet
       setStyle(el, stylesheet$$1);
@@ -6351,8 +6350,8 @@ function leave (vnode, rm) {
       next();
     }
 
-    function next() {
-      leaveAnimationName = generateNodeAnimation(
+    function next () {
+      leaveAnimation = generateNodeAnimation(
         el,
         endState,
         transitionProperties,
@@ -6452,68 +6451,7 @@ function generateNodeAnimation (el, styles, animationProperties, done) {
     return
   }
 
-  var styleNames = Object.keys(styles);
-  var styleLength = styleNames.length;
-
-  if (!styleLength) {
-    done();
-    return
-  }
-
-  var name = generateAnimationName();
-
-  var completedStyleAnimation = 0;
-
-  function animationEndListener () {
-    ++completedStyleAnimation;
-    if (completedStyleAnimation >= styleLength) { done(); }
-  }
-
-  function addAnimation(styleName, styleVal, cb) {
-    if (!styleName || styleVal === undefined) { return cb() }
-
-    el.addAnimation(
-      name,
-      styleName,
-      animationProperties.easing || 'linear',
-      'current',
-      styleVal,
-      animationProperties.duration || 0,
-      {
-        beginTime: animationProperties.delay || 0,
-        onfinished: function (/*e*/) {
-          cb();
-        }
-      }
-    );
-  }
-
-  for (var i = 0; i < styleLength; ++i) {
-    var styleName = styleNames[i];
-    var styleValue = styles[styleName];
-
-    if (styleName === 'backgroundColor' || styleName === 'background-color') {
-      var rgbaArray = styleValue.match(/\((.*)\)/)[1].split(',').map(function (v) { return v ? v.trim() : undefined; });
-
-      var completedRgbaAnimation = 0;
-      var rgbaAnimationEndListener = function () {
-        if (++completedRgbaAnimation >= 4) {
-          animationEndListener();
-        }
-      };
-
-      addAnimation('bkcolor-r', rgbaArray[0], rgbaAnimationEndListener);
-      addAnimation('bkcolor-g', rgbaArray[1], rgbaAnimationEndListener);
-      addAnimation('bkcolor-b', rgbaArray[2], rgbaAnimationEndListener);
-      addAnimation('bkcolor-a', rgbaArray[3], rgbaAnimationEndListener);
-
-    } else {
-      addAnimation(styleName, styleValue, animationEndListener);
-    }
-  }
-
-  el.startAnimation(name);
-  return name
+  return new renderer.Anime(el, styles, animationProperties).onComplete(done).play()
 }
 
 function _enter (_, vnode) {
@@ -6588,7 +6526,7 @@ var show = {
         setElementDisplay(el, originalDisplay);
       });
     } else {
-      setElementDisplay(el, originalDisplay);
+      setElementDisplay(el);
     }
   },
 
@@ -6608,7 +6546,7 @@ var show = {
         });
       } else {
         leave(vnode, function () {
-          setElementDisplay('none');
+          setElementDisplay(el);
         });
       }
     } else {
@@ -6630,10 +6568,23 @@ var show = {
 };
 
 /**
+ * Not type checking this file because flow doesn't like attaching
+ * properties to Elements.
+ */
+
+/* istanbul ignore if */
+
+var model = {
+  inserted: function inserted (el, binding, vnode) {},
+  componentUpdated: function componentUpdated (el, binding, vnode) {}
+};
+
+/**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
 var platformDirectives = {
+  model: model,
   show: show
 };
 
@@ -6942,9 +6893,9 @@ var TransitionGroup = {
           el.setStyle('position: fixed');
         }
 
-        var moveAnimationName = applyAnimation(el, c.data.pos, c.data.newPos, moveData, el._moveCb = function cb (e) {
+        var moveAnimation = applyAnimation(el, c.data.pos, c.data.newPos, moveData, el._moveCb = function cb (e) {
           if (!e) {
-            moveAnimationName && el.stopAnimation(moveAnimationName);
+            moveAnimation && moveAnimation.stop();
           }
 
           if (oriPosition !== undefined) {
@@ -6980,39 +6931,10 @@ function recordPosition (c) {
 function applyAnimation (el, startPos, endPos, animationProperties, cb) {
   if (!startPos || !endPos) { return cb() }
 
-  var animationName = generateAnimationName();
-
-  function addAnimation(styleName, startVal, endVal, cb) {
-    if (!styleName || startVal === undefined || endVal === undefined) { return cb() }
-
-    el.addAnimation(
-      animationName,
-      styleName,
-      animationProperties.easing || 'linear',
-      startVal,
-      endVal,
-      animationProperties.duration || 0,
-      {
-        beginTime: animationProperties.delay || 0,
-        onfinished: function (/*e*/) {
-          cb();
-        }
-      }
-    );
-  }
-
-  var completedPositionAnimation = 0;
-  function animationEndListener () {
-    ++completedPositionAnimation;
-    if (completedPositionAnimation >= 2) { cb(); }
-  }
-
-  addAnimation('x', startPos.left, endPos.left, animationEndListener);
-  addAnimation('y', startPos.top, endPos.top, animationEndListener);
-
-  el.startAnimation(animationName);
-
-  return animationName
+  return new renderer.Anime(el, {
+    translateX: [startPos.left, endPos.left],
+    translateY: [startPos.top, endPos.top]
+  }, animationProperties).onComplete(cb).play();
 }
 
 function judgeMovable (c) {
@@ -7637,7 +7559,34 @@ function parseText (
 /**
  * Cross-platform code generation for component v-model
  */
+function genComponentModel (
+  el,
+  value,
+  modifiers
+) {
+  var ref = modifiers || {};
+  var number = ref.number;
+  var trim = ref.trim;
 
+  var baseValueExpression = '$$v';
+  var valueExpression = baseValueExpression;
+  if (trim) {
+    valueExpression =
+      "(typeof " + baseValueExpression + " === 'string'" +
+        "? " + baseValueExpression + ".trim()" +
+        ": " + baseValueExpression + ")";
+  }
+  if (number) {
+    valueExpression = "_n(" + valueExpression + ")";
+  }
+  var assignment = genAssignmentCode(value, valueExpression);
+
+  el.model = {
+    value: ("(" + value + ")"),
+    expression: ("\"" + value + "\""),
+    callback: ("function (" + baseValueExpression + ") {" + assignment + "}")
+  };
+}
 
 /**
  * Cross-platform codegen helper for generating v-model value assignment code.
@@ -9622,11 +9571,101 @@ var style = {
 
 var modules$1 = [tag, xTemplate$1, klass, style];
 
+/*  */
+
+var warn$2;
+
+// in some cases, the event used has to be determined at runtime
+// so we used some reserved tokens during compile.
+
+
+
+function model$1 (
+  el,
+  dir,
+  _warn
+) {
+  warn$2 = _warn;
+  var value = dir.value;
+  var modifiers = dir.modifiers;
+  var tag = el.tag && el.tag.toLowerCase();
+  var type = el.attrsMap.type;
+
+  if (process.env.NODE_ENV !== 'production') {
+    var dynamicType = el.attrsMap['v-bind:type'] || el.attrsMap[':type'];
+    if (tag === 'input' && dynamicType) {
+      warn$2(
+        "<input :type=\"" + dynamicType + "\" v-model=\"" + value + "\">:\n" +
+        "v-model does not support dynamic input types. Use v-if branches instead."
+      );
+    }
+    // inputs with type="file" are read only and setting the input's
+    // value will throw an error.
+    if (tag === 'input' && type === 'file') {
+      warn$2(
+        "<" + (el.tag) + " v-model=\"" + value + "\" type=\"file\">:\n" +
+        "File inputs are read only. Use a v-on:change listener instead."
+      );
+    }
+  }
+
+  if (el.component) {
+    genComponentModel(el, value, modifiers);
+    // component v-model doesn't need extra runtime
+    return false
+  } else if (tag === 'input' || tag === 'textarea') {
+    genDefaultModel(el, value, modifiers);
+  } else if (!config.isReservedTag(tag)) {
+    genComponentModel(el, value, modifiers);
+    // component v-model doesn't need extra runtime
+    return false
+  } else if (process.env.NODE_ENV !== 'production') {
+    warn$2(
+      "<" + (el.tag) + " v-model=\"" + value + "\">: " +
+      "v-model is not supported on this element type. " +
+      'If you are working with contenteditable, it\'s recommended to ' +
+      'wrap a library dedicated for that purpose inside a custom component.'
+    );
+  }
+
+  // ensure runtime directive metadata
+  return true
+}
+
+function genDefaultModel (
+  el,
+  value,
+  modifiers
+) {
+  var ref = modifiers || {};
+  var number = ref.number;
+  var trim = ref.trim;
+  var event = 'domevents';
+
+  var valueExpression = '$event.eventTarget.getText()';
+  if (trim) {
+    valueExpression = "$event.eventTarget.getText().trim()";
+  }
+  if (number) {
+    valueExpression = "_n(" + valueExpression + ")";
+  }
+
+  var code = genAssignmentCode(value, valueExpression);
+
+  addAttr(el, 'value', ("(" + value + ")"));
+  addHandler(el, event, code, null, true);
+  if (trim || number) {
+    addHandler(el, 'focusedchanged', '$event.eventTarget.Focused || $forceUpdate()');
+  }
+}
+
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
-var directives$1 = [];
+var directives$1 = {
+  model: model$1
+};
 
 /**
  * 

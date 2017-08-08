@@ -19,6 +19,7 @@ const renderer = {
 export function init (cfg) {
   renderer.Document = cfg.Document
   renderer.Element = cfg.Element
+  renderer.Anime = cfg.Anime
 }
 
 export function reset () {

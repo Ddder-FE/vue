@@ -54,6 +54,13 @@ describe('codegen', () => {
     )
   })
 
+  it('generate event for notification event', () => {
+    assertCodegen(
+      '<div @closed.notification="onClose"></div>',
+      `with(this){return _c('DIV',{on:{"notification":function($event){if(!($event instanceof NotificationEvent) || $event.name.toLowerCase() !== 'closed')return null;onClose($event)}}})}`
+    )
+  })
+
   it('generate events with generic modifiers', () => {
     assertCodegen(
       '<input @input.stop="onInput">',

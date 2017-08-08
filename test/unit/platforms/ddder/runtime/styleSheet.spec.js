@@ -14,7 +14,7 @@ import { createPatchFunction } from 'core/vdom/patch'
 import baseModules from 'core/vdom/modules/index'
 import platformModules from 'web/runtime/modules/index'
 import styleSheet from 'ddder/runtime/modules/stylesheet'
-import StyleSheetPlugin from 'ddder/runtime/plugins/StyleSheet'
+import * as StyleSheetPlugin from 'ddder/runtime/plugins/StyleSheet/index'
 
 const modules = platformModules.concat(baseModules, styleSheet)
 
@@ -28,10 +28,13 @@ describe('vdom StyleSheet module', () => {
 
     oriSetStyle = HTMLElement.prototype.setStyle
     HTMLElement.prototype.setStyle = function (styleString) {
-      const [type, val] = styleString.split(':')
-
+      const styles = styleString.split(';')
       if (!this._mock_style_) this._mock_style_ = {}
-      this._mock_style_[type] = val
+
+      styles.forEach(style => {
+        const [type, val] = style.split(':')
+        this._mock_style_[type] = val
+      })
     }
   })
 
@@ -54,7 +57,7 @@ describe('vdom StyleSheet module', () => {
 
       const elm = patch(null, vnode)
       expect(elm._mock_style_['font-size']).toBe('12px')
-      expect(elm._mock_style_.color).toBe('rgba(255, 0, 0, 1)')
+      expect(elm._mock_style_.color).toBe('rgba(255, 0, 0, 255)')
     })
 
     it('should change elements style', () => {

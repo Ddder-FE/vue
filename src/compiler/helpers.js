@@ -60,6 +60,12 @@ export function addHandler (
     name = 'custom'
   }
 
+  if (modifiers && modifiers.notification) {
+    delete modifiers.notification
+    modifiers.eventName = name
+    name = 'notification'
+  }
+
   // check capture modifier
   if (modifiers && modifiers.capture) {
     delete modifiers.capture

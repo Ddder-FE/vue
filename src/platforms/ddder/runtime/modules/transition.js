@@ -3,6 +3,8 @@
  * Created by zhiyuan.huang@rdder.com on 17/6/28.
  */
 
+/* global renderer */
+
 'use strict'
 
 import { warn } from 'core/util/debug'
@@ -12,12 +14,6 @@ import { activeInstance } from 'core/instance/lifecycle'
 import { resolveTransition } from 'web/runtime/transition-util'
 
 import { setStyle } from './stylesheet'
-
-let animationUid = 0
-
-export function generateAnimationName () {
-  return '__animation_' + ++animationUid + '__'
-}
 
 export function enter (vnode, toggleDisplay: ?() => void) {
   const el = vnode.elm
@@ -87,11 +83,11 @@ export function enter (vnode, toggleDisplay: ?() => void) {
   const endState = getEnterTargetState(el, stylesheet, startClass, toClass, activeClass, vnode.context)
   const needAnimation = Object.keys(endState).length > 0
 
-  let animationName
+  let animation
   const cb = el._enterCb = once(() => {
     if (cb.cancelled) {
-      if (animationName) {
-        el.stopAnimation(animationName)
+      if (animation) {
+        animation.stop()
       }
 
       // el._prevStyleSheet = stylesheet
@@ -125,7 +121,7 @@ export function enter (vnode, toggleDisplay: ?() => void) {
 
   setTimeout(() => {
     if (!cb.cancelled && needAnimation) {
-      animationName = generateNodeAnimation(el, endState, transitionProperties, userWantsControl ? noop : cb)
+      animation = generateNodeAnimation(el, endState, transitionProperties, userWantsControl ? noop : cb)
     } else if (!userWantsControl) {
       cb()
     }
@@ -191,13 +187,13 @@ export function leave (vnode, rm) {
   const transitionProperties = normalizeTransitionProperties(resolveClassValue(vnode.context, leaveActiveClass))
   const endState = resolveClassValue(vnode.context, leaveToClass) || resolveClassValue(vnode.context, leaveActiveClass)
 
-  let leaveAnimationName
+  let leaveAnimation
   const cb = el._leaveCb = once(() => {
     if (el.parentNode && el.parentNode._pending) {
       el.parentNode._pending[vnode.key] = null
     }
     if (cb.cancelled) {
-      leaveAnimationName && el.stopAnimation(leaveAnimationName)
+      leaveAnimation && leaveAnimation.stop()
 
       // el._prevStyleSheet = stylesheet
       setStyle(el, stylesheet)
@@ -236,7 +232,7 @@ export function leave (vnode, rm) {
     }
 
     function next () {
-      leaveAnimationName = generateNodeAnimation(
+      leaveAnimation = generateNodeAnimation(
         el,
         endState,
         transitionProperties,
@@ -334,67 +330,7 @@ export function generateNodeAnimation (el, styles, animationProperties, done = n
     return
   }
 
-  const styleNames = Object.keys(styles)
-  const styleLength = styleNames.length
-
-  if (!styleLength) {
-    done()
-    return
-  }
-
-  const name = generateAnimationName()
-
-  let completedStyleAnimation = 0
-
-  function animationEndListener () {
-    ++completedStyleAnimation
-    if (completedStyleAnimation >= styleLength) done()
-  }
-
-  function addAnimation (styleName, styleVal, cb) {
-    if (!styleName || styleVal === undefined) return cb()
-
-    el.addAnimation(
-      name,
-      styleName,
-      animationProperties.easing || 'linear',
-      'current',
-      styleVal,
-      animationProperties.duration || 0,
-      {
-        beginTime: animationProperties.delay || 0,
-        onfinished: (/* e */) => {
-          cb()
-        }
-      }
-    )
-  }
-
-  for (let i = 0; i < styleLength; ++i) {
-    const styleName = styleNames[i]
-    const styleValue = styles[styleName]
-
-    if (styleName === 'backgroundColor' || styleName === 'background-color') {
-      const rgbaArray = styleValue.match(/\((.*)\)/)[1].split(',').map(v => v ? v.trim() : undefined)
-
-      let completedRgbaAnimation = 0
-      const rgbaAnimationEndListener = () => {
-        if (++completedRgbaAnimation >= 4) {
-          animationEndListener()
-        }
-      }
-
-      addAnimation('bkcolor-r', rgbaArray[0], rgbaAnimationEndListener)
-      addAnimation('bkcolor-g', rgbaArray[1], rgbaAnimationEndListener)
-      addAnimation('bkcolor-b', rgbaArray[2], rgbaAnimationEndListener)
-      addAnimation('bkcolor-a', rgbaArray[3], rgbaAnimationEndListener)
-    } else {
-      addAnimation(styleName, styleValue, animationEndListener)
-    }
-  }
-
-  el.startAnimation(name)
-  return name
+  return new renderer.Anime(el, styles, animationProperties).onComplete(done).play()
 }
 
 function _enter (_: any, vnode: VNodeWithData) {

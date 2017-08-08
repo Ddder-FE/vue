@@ -9,6 +9,7 @@ const genGuard = condition => `if(${condition})return null;`
 
 // todo: need to normalize custom event name
 const customEventName = (name: string) => genGuard(`!($event instanceof CustomEvent) || $event.eventName.toLowerCase() !== '${name.toLowerCase()}'`)
+const notificationEventName = (name: string) => genGuard(`!($event instanceof NotificationEvent) || $event.name.toLowerCase() !== '${name.toLowerCase()}'`)
 
 const modifierCode: { [key: string]: string } = {
   stop: '$event.cancelBubble = true;',
@@ -21,6 +22,11 @@ export function eventModifier (name: string, modifiers: Object) {
 
   if (name.match(/custom$/i)) {
     result += customEventName(modifiers.eventName)
+    delete modifiers.eventName
+  }
+
+  if (name.match(/notification$/i)) {
+    result += notificationEventName(modifiers.eventName)
     delete modifiers.eventName
   }
 

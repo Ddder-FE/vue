@@ -4,4 +4,8 @@
 
 'use strict'
 
-export default []
+import model from './model'
+
+export default {
+  model
+}
