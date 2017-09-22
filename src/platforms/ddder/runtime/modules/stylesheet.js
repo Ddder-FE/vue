@@ -55,7 +55,7 @@ function updateStyleSheet (oldVnode, vnode) {
 
   if (!StyleSheet) {
     // todo: should compare prevStyleSheet with newStyle, and patch style diff
-    el._prevStyleSheet = newStyle
+    vnode.data.stylesheet = newStyle
     return setStyle(el, newStyle)
   }
 
@@ -79,8 +79,8 @@ function updateStyleSheet (oldVnode, vnode) {
     styleList.push(newStyle)
   }
 
-  const newStyleSheet = StyleSheet.flatten(styleList)
-  const prevStyleSheet = el._prevStyleSheet || (el._prevStyleSheet = {})
+  const newStyleSheet = vnode.data.stylesheet = StyleSheet.flatten(styleList)
+  const prevStyleSheet = oldVnode.data.stylesheet || {}
 
   StyleSheet.processStyle(newStyleSheet)
 
@@ -88,7 +88,6 @@ function updateStyleSheet (oldVnode, vnode) {
 
   for (const name in prevStyleSheet) {
     if (isUndef(newStyleSheet[name]) && prevStyleSheet[name]) {
-      prevStyleSheet[name] = ''
       newStyleSheetBuffer.add(name, '')
     }
   }
@@ -97,8 +96,6 @@ function updateStyleSheet (oldVnode, vnode) {
     const cur = newStyleSheet[name]
     if (cur !== prevStyleSheet[name]) {
       const newVal = cur == null ? '' : cur
-
-      prevStyleSheet[name] = newVal
       newStyleSheetBuffer.add(name, newVal)
     }
   }

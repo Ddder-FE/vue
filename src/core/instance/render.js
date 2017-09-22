@@ -5,7 +5,7 @@ import {
   nextTick,
   emptyObject,
   handleError,
-  defineReactive
+  defineReactive,
 } from '../util/index'
 
 import { createElement } from '../vdom/create-element'

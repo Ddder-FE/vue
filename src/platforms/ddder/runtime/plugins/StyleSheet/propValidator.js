@@ -4,11 +4,7 @@
 /* eslint-disable */
 'use strict'
 
-class PropTypeError extends Error {
-  constructor(msg) {
-    super(msg)
-  }
-}
+const PropTypeError = Error
 
 function throwStyleError(message1, style, caller, message2) {
   throw new PropTypeError(message1 + '\n' + (caller || '<<unknown>>') + ': ' +

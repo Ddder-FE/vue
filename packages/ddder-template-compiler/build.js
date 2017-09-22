@@ -2899,6 +2899,10 @@ var defaultStrat = function (parentVal, childVal) {
 
 /*  */
 
+/**
+ * Created by zhiyuan.huang@ddder.net.
+ */
+
 /*  */
 
 /*  */
@@ -3963,6 +3967,8 @@ function genDefaultModel (
   if (number) {
     valueExpression = "_n(" + valueExpression + ")";
   }
+
+  valueExpression = "_nextlySmpParser(" + valueExpression + ")";
 
   var code = genAssignmentCode(value, valueExpression);
 

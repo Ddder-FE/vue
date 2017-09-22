@@ -142,6 +142,8 @@ function genDefaultModel (
     valueExpression = `_n(${valueExpression})`
   }
 
+  valueExpression = "_nextlySmpParser(" + valueExpression + ")";
+
   const code = genAssignmentCode(value, valueExpression)
 
   addAttr(el, 'value', `(${value})`)

@@ -77,7 +77,7 @@ export function enter (vnode, toggleDisplay: ?() => void) {
 
   const userWantsControl = enterHook && (enterHook._length || enterHook.length) > 1
 
-  const stylesheet = el._prevStyleSheet || {}
+  const stylesheet = vnode.data.stylesheet || {}
   const startState = resolveClassValue(vnode.context, startClass)
   const transitionProperties = normalizeTransitionProperties(resolveClassValue(vnode.context, activeClass))
   const endState = getEnterTargetState(el, stylesheet, startClass, toClass, activeClass, vnode.context)
@@ -90,12 +90,10 @@ export function enter (vnode, toggleDisplay: ?() => void) {
         animation.stop()
       }
 
-      // el._prevStyleSheet = stylesheet
       setStyle(el, stylesheet)
 
       enterCancelledHook && enterCancelledHook(el)
     } else {
-      // el._prevStyleSheet = Object.assign(stylesheet, startState, endState)
       afterEnterHook && afterEnterHook(el)
     }
     el._enterCb = null
@@ -128,7 +126,6 @@ export function enter (vnode, toggleDisplay: ?() => void) {
   }, 16)
 
   if (startState) {
-    // el._prevStyleSheet = Object.assign({}, stylesheet, startState)
     for (const key in startState) {
       setStyle(el, key, startState[key])
     }
@@ -182,7 +179,7 @@ export function leave (vnode, rm) {
 
   const userWantControl = leave && (leave._length || leave.length) > 1
 
-  const stylesheet = el._prevStyleSheet || {}
+  const stylesheet = vnode.data.stylesheet || {}
   const startState = resolveClassValue(vnode.context, leaveClass)
   const transitionProperties = normalizeTransitionProperties(resolveClassValue(vnode.context, leaveActiveClass))
   const endState = resolveClassValue(vnode.context, leaveToClass) || resolveClassValue(vnode.context, leaveActiveClass)
@@ -195,13 +192,11 @@ export function leave (vnode, rm) {
     if (cb.cancelled) {
       leaveAnimation && leaveAnimation.stop()
 
-      // el._prevStyleSheet = stylesheet
       setStyle(el, stylesheet)
 
       leaveCancelled && leaveCancelled(el)
     } else {
       rm()
-      // el._prevStyleSheet = Object.assign(stylesheet, startState, endState)
       afterLeave && afterLeave(el)
     }
     el._leaveCb = null
@@ -225,7 +220,7 @@ export function leave (vnode, rm) {
     beforeLeave && beforeLeave(el)
 
     if (startState) {
-      el._prevStyleSheet = Object.assign({}, stylesheet, startState)
+      vnode.data.stylesheet = Object.assign({}, stylesheet, startState)
       generateNodeAnimation(el, startState, {}, next)
     } else {
       next()

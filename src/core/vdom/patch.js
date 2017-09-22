@@ -165,6 +165,16 @@ export function createPatchFunction (backend) {
           insert(parentElm, vnode.elm, refElm)
         }
       } else {
+        if (vnode.parent) {
+          let parentVnode = vnode.parent;
+          if (isDef(parentVnode.data)) {
+            let oldElm = parentVnode.elm;
+            parentVnode.elm = vnode.elm;
+            invokePreCreateHooks(parentVnode, insertedVnodeQueue);
+            parentVnode.elm = oldElm;
+          }
+        }
+
         if (isDef(data)) {
           invokePreCreateHooks(vnode, insertedVnodeQueue)
         }

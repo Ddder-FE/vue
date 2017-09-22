@@ -1597,6 +1597,20 @@ function isType (type, fn) {
   return false
 }
 
+/**
+ * Created by zhiyuan.huang@ddder.net.
+ */
+
+var nextlySmpDecode = function(val) {
+  var regexp = /\u0012((?:\w{4})+)\u0013/ig;
+
+  return val.replace(regexp, function(charPoints) {
+    var charPointGroup = charPoints.match(/\w{4}/g).map(function (charPoint) { return eval("'" + '\\u' + charPoint + "'"); });
+    charPointGroup.pop();
+    return charPointGroup.join('');
+  });
+};
+
 /*  */
 
 /* not type checking this file because flow doesn't play well with Proxy */
@@ -4190,6 +4204,7 @@ function renderMixin (Vue) {
   Vue.prototype._e = createEmptyVNode;
   Vue.prototype._u = resolveScopedSlots;
   Vue.prototype._g = bindObjectListeners;
+  Vue.prototype._nextlySmpParser = nextlySmpDecode;
 }
 
 /*  */
@@ -4922,6 +4937,16 @@ function createPatchFunction (backend) {
 
       /* istanbul ignore if */
       {
+        if (vnode.parent) {
+          var parentVnode = vnode.parent;
+          if (isDef(parentVnode.data)) {
+            var oldElm = parentVnode.elm;
+            parentVnode.elm = vnode.elm;
+            invokePreCreateHooks(parentVnode, insertedVnodeQueue);
+            parentVnode.elm = oldElm;
+          }
+        }
+
         if (isDef(data)) {
           invokePreCreateHooks(vnode, insertedVnodeQueue);
         }
@@ -6048,7 +6073,7 @@ function updateStyleSheet (oldVnode, vnode) {
 
   if (!StyleSheet) {
     // todo: should compare prevStyleSheet with newStyle, and patch style diff
-    el._prevStyleSheet = newStyle;
+    vnode.data.stylesheet = newStyle;
     return setStyle(el, newStyle)
   }
 
@@ -6072,8 +6097,8 @@ function updateStyleSheet (oldVnode, vnode) {
     styleList.push(newStyle);
   }
 
-  var newStyleSheet = StyleSheet.flatten(styleList);
-  var prevStyleSheet = el._prevStyleSheet || (el._prevStyleSheet = {});
+  var newStyleSheet = vnode.data.stylesheet = StyleSheet.flatten(styleList);
+  var prevStyleSheet = oldVnode.data.stylesheet || {};
 
   StyleSheet.processStyle(newStyleSheet);
 
@@ -6081,7 +6106,6 @@ function updateStyleSheet (oldVnode, vnode) {
 
   for (var name in prevStyleSheet) {
     if (isUndef(newStyleSheet[name]) && prevStyleSheet[name]) {
-      prevStyleSheet[name] = '';
       newStyleSheetBuffer.add(name, '');
     }
   }
@@ -6090,8 +6114,6 @@ function updateStyleSheet (oldVnode, vnode) {
     var cur = newStyleSheet[name$1];
     if (cur !== prevStyleSheet[name$1]) {
       var newVal = cur == null ? '' : cur;
-
-      prevStyleSheet[name$1] = newVal;
       newStyleSheetBuffer.add(name$1, newVal);
     }
   }
@@ -6243,7 +6265,7 @@ function enter (vnode, toggleDisplay) {
 
   var userWantsControl = enterHook && (enterHook._length || enterHook.length) > 1;
 
-  var stylesheet$$1 = el._prevStyleSheet || {};
+  var stylesheet$$1 = vnode.data.stylesheet || {};
   var startState = resolveClassValue(vnode.context, startClass);
   var transitionProperties = normalizeTransitionProperties(resolveClassValue(vnode.context, activeClass));
   var endState = getEnterTargetState(el, stylesheet$$1, startClass, toClass, activeClass, vnode.context);
@@ -6256,12 +6278,10 @@ function enter (vnode, toggleDisplay) {
         animation.stop();
       }
 
-      // el._prevStyleSheet = stylesheet
       setStyle(el, stylesheet$$1);
 
       enterCancelledHook && enterCancelledHook(el);
     } else {
-      // el._prevStyleSheet = Object.assign(stylesheet, startState, endState)
       afterEnterHook && afterEnterHook(el);
     }
     el._enterCb = null;
@@ -6294,7 +6314,6 @@ function enter (vnode, toggleDisplay) {
   }, 16);
 
   if (startState) {
-    // el._prevStyleSheet = Object.assign({}, stylesheet, startState)
     for (var key in startState) {
       setStyle(el, key, startState[key]);
     }
@@ -6346,7 +6365,7 @@ function leave (vnode, rm) {
 
   var userWantControl = leave && (leave._length || leave.length) > 1;
 
-  var stylesheet$$1 = el._prevStyleSheet || {};
+  var stylesheet$$1 = vnode.data.stylesheet || {};
   var startState = resolveClassValue(vnode.context, leaveClass);
   var transitionProperties = normalizeTransitionProperties(resolveClassValue(vnode.context, leaveActiveClass));
   var endState = resolveClassValue(vnode.context, leaveToClass) || resolveClassValue(vnode.context, leaveActiveClass);
@@ -6359,13 +6378,11 @@ function leave (vnode, rm) {
     if (cb.cancelled) {
       leaveAnimation && leaveAnimation.stop();
 
-      // el._prevStyleSheet = stylesheet
       setStyle(el, stylesheet$$1);
 
       leaveCancelled && leaveCancelled(el);
     } else {
       rm();
-      // el._prevStyleSheet = Object.assign(stylesheet, startState, endState)
       afterLeave && afterLeave(el);
     }
     el._leaveCb = null;
@@ -6389,7 +6406,7 @@ function leave (vnode, rm) {
     beforeLeave && beforeLeave(el);
 
     if (startState) {
-      el._prevStyleSheet = Object.assign({}, stylesheet$$1, startState);
+      vnode.data.stylesheet = Object.assign({}, stylesheet$$1, startState);
       generateNodeAnimation(el, startState, {}, next);
     } else {
       next();
@@ -9703,6 +9720,8 @@ function genDefaultModel (
     valueExpression = "_n(" + valueExpression + ")";
   }
 
+  valueExpression = "_nextlySmpParser(" + valueExpression + ")";
+
   var code = genAssignmentCode(value, valueExpression);
 
   addAttr(el, 'value', ("(" + value + ")"));
@@ -9788,17 +9807,7 @@ var compileToFunctions = ref$1.compileToFunctions;
  * Created by zhiyuan.huang@rdder.com on 17/6/21.
  */
 /* eslint-disable */
-var PropTypeError = (function (Error) {
-  function PropTypeError(msg) {
-    Error.call(this, msg);
-  }
-
-  if ( Error ) PropTypeError.__proto__ = Error;
-  PropTypeError.prototype = Object.create( Error && Error.prototype );
-  PropTypeError.prototype.constructor = PropTypeError;
-
-  return PropTypeError;
-}(Error));
+var PropTypeError = Error;
 
 function throwStyleError(message1, style, caller, message2) {
   throw new PropTypeError(message1 + '\n' + (caller || '<<unknown>>') + ': ' +
