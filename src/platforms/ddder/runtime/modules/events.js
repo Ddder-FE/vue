@@ -66,5 +66,18 @@ function updateDOMListeners (oldVnode: VNodeWithData, vnode: VNodeWithData) {
 
 export default {
   create: updateDOMListeners,
-  update: updateDOMListeners
+  update: updateDOMListeners,
+  destroy: function removeDOMListeners(vnode: VNodeWithData) {
+    const isComponentRoot = isDef(vnode.componentOptions)
+    let on = isComponentRoot ? vnode.data.nativeOn : vnode.data.on
+
+    if (isUndef(vnode.data.on)) {
+      return
+    }
+
+    on = on || {}
+    target = vnode.elm
+    normalizeEvents(on)
+    updateListeners({}, on, add, remove, vnode.context)
+  }
 }

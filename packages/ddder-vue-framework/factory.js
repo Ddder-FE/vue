@@ -6037,7 +6037,20 @@ function updateDOMListeners (oldVnode, vnode) {
 
 var events = {
   create: updateDOMListeners,
-  update: updateDOMListeners
+  update: updateDOMListeners,
+  destroy: function removeDOMListeners(vnode) {
+    var isComponentRoot = isDef(vnode.componentOptions);
+    var on = isComponentRoot ? vnode.data.nativeOn : vnode.data.on;
+
+    if (isUndef(vnode.data.on)) {
+      return
+    }
+
+    on = on || {};
+    target$1 = vnode.elm;
+    normalizeEvents(on);
+    updateListeners({}, on, add$1, remove$2, vnode.context);
+  }
 };
 
 /*  */
