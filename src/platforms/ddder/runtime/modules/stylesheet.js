@@ -9,14 +9,27 @@ import { isUndef, cached } from 'shared/util'
 import updateClass from './class'
 import updateStyle from './style'
 
+import patchStylesheet from '../../util/stylesheetPatch'
+
 export function setStyle (elm, styleSheet) {
   if (!elm) return
 
   if (typeof styleSheet === 'string' && arguments[2] !== undefined) {
-    elm.setStyle([normalizeName(styleSheet), arguments[2]].join(':'))
-  } else {
-    elm.setStyle(serializeStyleObj(styleSheet))
+    styleSheet = {};
+    styleSheet[styleSheet] = arguments[2];
   }
+
+  const normalizeStylesheet = {};
+
+  Object.keys(styleSheet).forEach(propName => {
+    const propValue = styleSheet[propName];
+    if (propValue == null) return;
+
+    normalizeStylesheet[normalizeName(propName)] = propValue;
+  });
+
+  patchStylesheet(elm, normalizeStylesheet);
+  elm.setStyle(serializeStyleObj(normalizeStylesheet))
 }
 
 const hyphenateRE = /([^-])([A-Z])/g

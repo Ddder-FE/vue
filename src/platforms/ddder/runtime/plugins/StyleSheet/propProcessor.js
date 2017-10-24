@@ -4,7 +4,7 @@
 /* eslint-disable */
 'use strict'
 
-import processColor from './processColor'
+import processColor from '../../../util/processColor'
 
 const typeProcessors = {}
 
