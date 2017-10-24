@@ -6,6 +6,8 @@ Object.defineProperty(exports, '__esModule', { value: true });
  * Created by zhiyuan.huang@rdder.com on 17/6/5.
  */
 
+'use strict';
+
 var VueFactory = require('./factory.js').VueFactory;
 
 var instances = {};

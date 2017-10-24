@@ -8,6 +8,6 @@
 // decode method for ddder
 export default {
   decode (html: string): string {
-    return html
+    return html ? html.replace(/^\s*/, '').replace(/\s*$/, '') : '';
   }
 }

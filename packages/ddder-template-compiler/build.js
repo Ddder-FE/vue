@@ -6,7 +6,7 @@ var splitRE$1 = /\r?\n/g;
 var emptyRE = /^\s*$/;
 var needFixRE = /^(\r?\n)*[\t\s]/;
 
-var index = function deindent (str) {
+var deIndent = function deindent (str) {
   if (!needFixRE.test(str)) {
     return str
   }
@@ -90,7 +90,7 @@ function isPlainObject (obj) {
  * Check if val is a valid array index.
  */
 function isValidArrayIndex (val) {
-  var n = parseFloat(val);
+  var n = parseFloat(String(val));
   return n >= 0 && Math.floor(n) === n && isFinite(val)
 }
 
@@ -175,9 +175,17 @@ var camelize = cached(function (str) {
 /**
  * Capitalize a string.
  */
+var capitalize = cached(function (str) {
+  return str.charAt(0).toUpperCase() + str.slice(1)
+});
 
-
-
+/**
+ * Hyphenate a camelCase string.
+ */
+var hyphenateRE = /\B([A-Z])/g;
+var hyphenate = cached(function (str) {
+  return str.replace(hyphenateRE, '-$1').toLowerCase()
+});
 
 /**
  * Simple bind, faster than native
@@ -654,7 +662,7 @@ function parseComponent (
   function end (tag, start, end) {
     if (depth === 1 && currentBlock) {
       currentBlock.end = start;
-      var text = index(content.slice(currentBlock.start, currentBlock.end));
+      var text = deIndent(content.slice(currentBlock.start, currentBlock.end));
       // pad content so that linters and pre-processors can output correct
       // line numbers in errors and warnings
       if (currentBlock.type !== 'template' && options.pad) {
@@ -691,10 +699,12 @@ function parseComponent (
  * Created by zhiyuan.huang@rdder.com on 17/6/9.
  */
 
+'use strict';
+
 // decode method for ddder
 var he = {
   decode: function decode (html) {
-    return html
+    return html ? html.replace(/^\s*/, '').replace(/\s*$/, '') : '';
   }
 };
 
@@ -901,14 +911,14 @@ function genAssignmentCode (
 var len;
 var str;
 var chr;
-var index$1;
+var index;
 var expressionPos;
 var expressionEndPos;
 
 function parseModel (val) {
   str = val;
   len = str.length;
-  index$1 = expressionPos = expressionEndPos = 0;
+  index = expressionPos = expressionEndPos = 0;
 
   if (val.indexOf('[') < 0 || val.lastIndexOf(']') < len - 1) {
     return {
@@ -934,11 +944,11 @@ function parseModel (val) {
 }
 
 function next () {
-  return str.charCodeAt(++index$1)
+  return str.charCodeAt(++index)
 }
 
 function eof () {
-  return index$1 >= len
+  return index >= len
 }
 
 function isStringStart (chr) {
@@ -947,7 +957,7 @@ function isStringStart (chr) {
 
 function parseBracket (chr) {
   var inBracket = 1;
-  expressionPos = index$1;
+  expressionPos = index;
   while (!eof()) {
     chr = next();
     if (isStringStart(chr)) {
@@ -957,7 +967,7 @@ function parseBracket (chr) {
     if (chr === 0x5B) { inBracket++; }
     if (chr === 0x5D) { inBracket--; }
     if (inBracket === 0) {
-      expressionEndPos = index$1;
+      expressionEndPos = index;
       break
     }
   }
@@ -1212,14 +1222,14 @@ var isChrome = UA && /chrome\/\d+/.test(UA) && !isEdge;
 // Firefox has a "watch" function on Object.prototype...
 var nativeWatch = ({}).watch;
 
-var supportsPassive = false;
+
 if (inBrowser) {
   try {
     var opts = {};
     Object.defineProperty(opts, 'passive', ({
       get: function get () {
         /* istanbul ignore next */
-        supportsPassive = true;
+        
       }
     })); // https://github.com/facebook/flow/issues/285
     window.addEventListener('test-passive', null, opts);
@@ -1278,7 +1288,7 @@ var nextTick = (function () {
   // UIWebView in iOS >= 9.3.3 when triggered in touch event handlers. It
   // completely stops working after triggering a few times... so, if native
   // Promise is available, we will use it:
-  /* istanbul ignore if */
+  /* istanbul ignore if */ // $flow-disable-line
   if (typeof Promise !== 'undefined' && isNative(Promise)) {
     var p = Promise.resolve();
     var logError = function (err) { console.error(err); };
@@ -1333,6 +1343,7 @@ var nextTick = (function () {
       pending = true;
       timerFunc();
     }
+    // $flow-disable-line
     if (!cb && typeof Promise !== 'undefined') {
       return new Promise(function (resolve, reject) {
         _resolve = resolve;
@@ -1342,7 +1353,7 @@ var nextTick = (function () {
 })();
 
 var _Set;
-/* istanbul ignore if */
+/* istanbul ignore if */ // $flow-disable-line
 if (typeof Set !== 'undefined' && isNative(Set)) {
   // use native Set when available.
   _Set = Set;
@@ -2447,7 +2458,7 @@ var VNode = function VNode (
   this.isAsyncPlaceholder = false;
 };
 
-var prototypeAccessors = { child: {} };
+var prototypeAccessors = { child: { configurable: true } };
 
 // DEPRECATED: alias for componentInstance for backwards compat.
 /* istanbul ignore next */
@@ -2551,7 +2562,7 @@ var Observer = function Observer (value) {
 Observer.prototype.walk = function walk (obj) {
   var keys = Object.keys(obj);
   for (var i = 0; i < keys.length; i++) {
-    defineReactive$$1(obj, keys[i], obj[keys[i]]);
+    defineReactive(obj, keys[i], obj[keys[i]]);
   }
 };
 
@@ -2618,7 +2629,7 @@ function observe (value, asRootData) {
 /**
  * Define a reactive property on an Object.
  */
-function defineReactive$$1 (
+function defineReactive (
   obj,
   key,
   val,
@@ -2701,7 +2712,7 @@ function set (target, key, val) {
     target[key] = val;
     return val
   }
-  defineReactive$$1(ob.value, key, val);
+  defineReactive(ob.value, key, val);
   ob.dep.notify();
   return val
 }
@@ -2943,6 +2954,8 @@ var defaultStrat = function (parentVal, childVal) {
 /**
  * Created by zhiyuan.huang@ddder.net.
  */
+
+'use strict';
 
 /*  */
 
@@ -3736,6 +3749,8 @@ var canBeLeftOpenTag$1 = makeMap('');
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
+'use strict';
+
 var reservedTagsMap = mapReservedTags();
 
 function preTransformNode (el) {
@@ -3752,6 +3767,8 @@ var tag = {
  * 
  * Created by zhiyuan.huang@rdder.com on 17/6/7.
  */
+
+'use strict';
 
 function endTransformNode (el, options) {
   if (el.tag !== 'script') { return }
@@ -3928,6 +3945,8 @@ var style = {
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
+'use strict';
+
 var modules = [tag, xTemplate, klass, style];
 
 /*  */
@@ -4024,6 +4043,8 @@ function genDefaultModel (
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
+'use strict';
+
 var directives = {
   model: model
 };
@@ -4032,6 +4053,8 @@ var directives = {
  * 
  * Created by zhiyuan.huang@rdder.com on 17/6/16.
  */
+
+'use strict';
 
 var genGuard$1 = function (condition) { return ("if(" + condition + ")return null;"); };
 
@@ -4088,6 +4111,8 @@ var baseOptions = {
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
+
+'use strict';
 
 var ref = createCompiler(baseOptions);
 var compile = ref.compile;

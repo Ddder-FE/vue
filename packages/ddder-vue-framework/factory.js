@@ -65,7 +65,7 @@ function isRegExp (v) {
  * Check if val is a valid array index.
  */
 function isValidArrayIndex (val) {
-  var n = parseFloat(val);
+  var n = parseFloat(String(val));
   return n >= 0 && Math.floor(n) === n && isFinite(val)
 }
 
@@ -590,14 +590,14 @@ var isChrome = UA && /chrome\/\d+/.test(UA) && !isEdge;
 // Firefox has a "watch" function on Object.prototype...
 var nativeWatch = ({}).watch;
 
-var supportsPassive = false;
+
 if (inBrowser) {
   try {
     var opts = {};
     Object.defineProperty(opts, 'passive', ({
       get: function get () {
         /* istanbul ignore next */
-        supportsPassive = true;
+        
       }
     })); // https://github.com/facebook/flow/issues/285
     window.addEventListener('test-passive', null, opts);
@@ -656,7 +656,7 @@ var nextTick = (function () {
   // UIWebView in iOS >= 9.3.3 when triggered in touch event handlers. It
   // completely stops working after triggering a few times... so, if native
   // Promise is available, we will use it:
-  /* istanbul ignore if */
+  /* istanbul ignore if */ // $flow-disable-line
   if (typeof Promise !== 'undefined' && isNative(Promise)) {
     var p = Promise.resolve();
     var logError = function (err) { console.error(err); };
@@ -711,6 +711,7 @@ var nextTick = (function () {
       pending = true;
       timerFunc();
     }
+    // $flow-disable-line
     if (!cb && typeof Promise !== 'undefined') {
       return new Promise(function (resolve, reject) {
         _resolve = resolve;
@@ -720,7 +721,7 @@ var nextTick = (function () {
 })();
 
 var _Set;
-/* istanbul ignore if */
+/* istanbul ignore if */ // $flow-disable-line
 if (typeof Set !== 'undefined' && isNative(Set)) {
   // use native Set when available.
   _Set = Set;
@@ -830,7 +831,7 @@ var VNode = function VNode (
   this.isAsyncPlaceholder = false;
 };
 
-var prototypeAccessors = { child: {} };
+var prototypeAccessors = { child: { configurable: true } };
 
 // DEPRECATED: alias for componentInstance for backwards compat.
 /* istanbul ignore next */
@@ -973,7 +974,7 @@ var Observer = function Observer (value) {
 Observer.prototype.walk = function walk (obj) {
   var keys = Object.keys(obj);
   for (var i = 0; i < keys.length; i++) {
-    defineReactive$$1(obj, keys[i], obj[keys[i]]);
+    defineReactive(obj, keys[i], obj[keys[i]]);
   }
 };
 
@@ -1040,7 +1041,7 @@ function observe (value, asRootData) {
 /**
  * Define a reactive property on an Object.
  */
-function defineReactive$$1 (
+function defineReactive (
   obj,
   key,
   val,
@@ -1123,7 +1124,7 @@ function set (target, key, val) {
     target[key] = val;
     return val
   }
-  defineReactive$$1(ob.value, key, val);
+  defineReactive(ob.value, key, val);
   ob.dep.notify();
   return val
 }
@@ -1696,6 +1697,8 @@ function isType (type, fn) {
  * Created by zhiyuan.huang@ddder.net.
  */
 
+'use strict';
+
 var nextlySmpDecode = function(val) {
   var regexp = /\u0012((?:\w{4})+)\u0013/ig;
 
@@ -2251,8 +2254,8 @@ function initEvents (vm) {
 
 var target;
 
-function add (event, fn, once$$1) {
-  if (once$$1) {
+function add (event, fn, once) {
+  if (once) {
     target.$once(event, fn);
   } else {
     target.$on(event, fn);
@@ -3193,7 +3196,7 @@ function initProps (vm, propsOptions) {
           vm
         );
       }
-      defineReactive$$1(props, key, value, function () {
+      defineReactive(props, key, value, function () {
         if (vm.$parent && !isUpdatingChildComponent) {
           warn(
             "Avoid mutating a prop directly since the value will be " +
@@ -3205,7 +3208,7 @@ function initProps (vm, propsOptions) {
         }
       });
     } else {
-      defineReactive$$1(props, key, value);
+      defineReactive(props, key, value);
     }
     // static props are already proxied on the component's prototype
     // during Vue.extend(). We only need to proxy props defined at
@@ -3485,7 +3488,7 @@ function initInjections (vm) {
     Object.keys(result).forEach(function (key) {
       /* istanbul ignore else */
       if (process.env.NODE_ENV !== 'production') {
-        defineReactive$$1(vm, key, result[key], function () {
+        defineReactive(vm, key, result[key], function () {
           warn(
             "Avoid mutating an injected value directly since the changes will be " +
             "overwritten whenever the provided component re-renders. " +
@@ -3494,7 +3497,7 @@ function initInjections (vm) {
           );
         });
       } else {
-        defineReactive$$1(vm, key, result[key]);
+        defineReactive(vm, key, result[key]);
       }
     });
     observerState.shouldConvert = true;
@@ -4183,15 +4186,15 @@ function initRender (vm) {
 
   /* istanbul ignore else */
   if (process.env.NODE_ENV !== 'production') {
-    defineReactive$$1(vm, '$attrs', parentData && parentData.attrs || emptyObject, function () {
+    defineReactive(vm, '$attrs', parentData && parentData.attrs || emptyObject, function () {
       !isUpdatingChildComponent && warn("$attrs is readonly.", vm);
     }, true);
-    defineReactive$$1(vm, '$listeners', vm.$options._parentListeners || emptyObject, function () {
+    defineReactive(vm, '$listeners', vm.$options._parentListeners || emptyObject, function () {
       !isUpdatingChildComponent && warn("$listeners is readonly.", vm);
     }, true);
   } else {
-    defineReactive$$1(vm, '$attrs', parentData && parentData.attrs || emptyObject, null, true);
-    defineReactive$$1(vm, '$listeners', vm.$options._parentListeners || emptyObject, null, true);
+    defineReactive(vm, '$attrs', parentData && parentData.attrs || emptyObject, null, true);
+    defineReactive(vm, '$listeners', vm.$options._parentListeners || emptyObject, null, true);
   }
 }
 
@@ -4723,7 +4726,7 @@ function initGlobalAPI (Vue) {
     warn: warn,
     extend: extend,
     mergeOptions: mergeOptions,
-    defineReactive: defineReactive$$1
+    defineReactive: defineReactive
   };
 
   Vue.set = set;
@@ -4768,6 +4771,8 @@ Vue$2.version = '2.4.4';
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
+
+'use strict';
 
 function createElement$1 (tagName) {
   return new renderer.Element(tagName)
@@ -4990,13 +4995,13 @@ function createPatchFunction (backend) {
   }
 
   function createRmCb (childElm, listeners) {
-    function remove$$1 () {
-      if (--remove$$1.listeners === 0) {
+    function remove () {
+      if (--remove.listeners === 0) {
         removeNode(childElm);
       }
     }
-    remove$$1.listeners = listeners;
-    return remove$$1
+    remove.listeners = listeners;
+    return remove
   }
 
   function removeNode (el) {
@@ -5750,6 +5755,8 @@ var baseModules = [
  * Created by zhiyuan.huang@rdder.com on 17/6/7.
  */
 
+'use strict';
+
 function updateInstanceXTemplates (oldVNode, vnode) {
   var data = vnode.data;
   var oldData = oldVNode.data;
@@ -5974,8 +5981,6 @@ var attrs = {
 
 /*  */
 
-function normalizeEvents (on) {}
-
 var target$1;
 
 function add$1 (
@@ -6031,7 +6036,6 @@ function updateDOMListeners (oldVnode, vnode) {
   on = on || {};
   oldOn = oldOn || {};
   target$1 = vnode.elm;
-  normalizeEvents(on);
   updateListeners(on, oldOn, add$1, remove$2, vnode.context);
 }
 
@@ -6048,7 +6052,6 @@ var events = {
 
     on = on || {};
     target$1 = vnode.elm;
-    normalizeEvents(on);
     updateListeners({}, on, add$1, remove$2, vnode.context);
   }
 };
@@ -6158,6 +6161,8 @@ function updateStyle (oldVnode, vnode) {
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/22.
  */
+
+'use strict';
 
 function setStyle (elm, styleSheet) {
   if (!elm) { return }
@@ -6291,20 +6296,20 @@ var stylesheet = {
 
 /*  */
 
-function resolveTransition (def$$1) {
-  if (!def$$1) {
+function resolveTransition (def) {
+  if (!def) {
     return
   }
   /* istanbul ignore else */
-  if (typeof def$$1 === 'object') {
+  if (typeof def === 'object') {
     var res = {};
-    if (def$$1.css !== false) {
-      extend(res, autoCssTransition(def$$1.name || 'v'));
+    if (def.css !== false) {
+      extend(res, autoCssTransition(def.name || 'v'));
     }
-    extend(res, def$$1);
+    extend(res, def);
     return res
-  } else if (typeof def$$1 === 'string') {
-    return autoCssTransition(def$$1)
+  } else if (typeof def === 'string') {
+    return autoCssTransition(def)
   }
 }
 
@@ -6336,6 +6341,8 @@ var raf = inBrowser && window.requestAnimationFrame
  */
 
 /* global renderer */
+
+'use strict';
 
 function enter (vnode, toggleDisplay) {
   var el = vnode.elm;
@@ -6487,13 +6494,6 @@ function leave (vnode, rm) {
   var afterLeave = data.afterLeave;
   var leaveCancelled = data.leaveCancelled;
   var delayLeave = data.delayLeave;
-
-  var context = vnode.context;
-  var transitionNode = context.$vnode;
-  while (transitionNode && transitionNode.parent) {
-    transitionNode = transitionNode.parent;
-    context = transitionNode.context;
-  }
 
   var userWantControl = leave && (leave._length || leave.length) > 1;
 
@@ -6664,6 +6664,8 @@ var transition = {
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
+'use strict';
+
 var platformModules = [xTemplate, attrs, events, stylesheet, transition];
 
 /*  */
@@ -6671,6 +6673,8 @@ var platformModules = [xTemplate, attrs, events, stylesheet, transition];
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
+
+'use strict';
 
 // the directive module should be applied last, after all
 // built-in modules have been applied.
@@ -6682,6 +6686,8 @@ var patch = createPatchFunction({ nodeOps: nodeOps, modules: modules });
  * 
  * Created by zhiyuan.huang@ddder.net on 17/6/29.
  */
+
+'use strict';
 
 // recursively search for possible transition defined inside the component root
 function locateNode (vnode) {
@@ -6776,6 +6782,8 @@ var model = {
 /**
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
+
+'use strict';
 
 var platformDirectives = {
   model: model,
@@ -6943,7 +6951,7 @@ var Transition$1 = {
     ) {
       // replace old child transition data with fresh one
       // important for dynamic transitions!
-      var oldData = oldChild && (oldChild.data.transition = extend({}, data));
+      var oldData = oldChild.data.transition = extend({}, data);
       // handle transition mode
       if (mode === 'out-in') {
         // return placeholder node and queue update when leave finishes
@@ -6973,12 +6981,16 @@ var Transition$1 = {
  * Created by zhiyuan.huang@rdder.com on 17/6/28.
  */
 
+'use strict';
+
 /**
  * 
  * Created by zhiyuan.huang@rdder.com on 17/6/28.
  */
 
 /* global renderer */
+
+'use strict';
 
 // Provides transition support for list items.
 // supports move transitions using the FLIP technique.
@@ -7237,6 +7249,8 @@ function query$1 (el, document) {
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
+'use strict';
+
 // install platform specific utils
 Vue$2.config.mustUseProp = mustUseProp$1;
 Vue$2.config.isReservedTag = isReservedTag$1;
@@ -7258,10 +7272,12 @@ Vue$2.prototype.$mount = function (el, hydrating) {
  * Created by zhiyuan.huang@rdder.com on 17/6/9.
  */
 
+'use strict';
+
 // decode method for ddder
 var he = {
   decode: function decode (html) {
-    return html
+    return html ? html.replace(/^\s*/, '').replace(/\s*$/, '') : '';
   }
 };
 
@@ -9585,6 +9601,8 @@ var createCompiler = createCompilerCreator(function baseCompile (
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
+'use strict';
+
 var reservedTagsMap = mapReservedTags();
 
 function preTransformNode (el) {
@@ -9601,6 +9619,8 @@ var tag = {
  * 
  * Created by zhiyuan.huang@rdder.com on 17/6/7.
  */
+
+'use strict';
 
 function endTransformNode (el, options) {
   if (el.tag !== 'script') { return }
@@ -9754,6 +9774,8 @@ var style = {
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
+'use strict';
+
 var modules$1 = [tag, xTemplate$1, klass, style];
 
 /*  */
@@ -9850,6 +9872,8 @@ function genDefaultModel (
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
+'use strict';
+
 var directives$1 = {
   model: model$1
 };
@@ -9858,6 +9882,8 @@ var directives$1 = {
  * 
  * Created by zhiyuan.huang@rdder.com on 17/6/16.
  */
+
+'use strict';
 
 var genGuard$1 = function (condition) { return ("if(" + condition + ")return null;"); };
 
@@ -9915,6 +9941,8 @@ var baseOptions = {
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
 
+'use strict';
+
 var ref$1 = createCompiler(baseOptions);
 var compileToFunctions = ref$1.compileToFunctions;
 
@@ -9922,6 +9950,8 @@ var compileToFunctions = ref$1.compileToFunctions;
  * Created by zhiyuan.huang@rdder.com on 17/6/21.
  */
 /* eslint-disable */
+'use strict';
+
 var PropTypeError = Error;
 
 function throwStyleError(message1, style, caller, message2) {
@@ -10070,6 +10100,8 @@ addValidStylePropTypes(LayoutPropTypes);
  * Created by zhiyuan.huang@rdder.com on 17/6/21.
  */
 
+'use strict';
+
 var objects = {};
 var uniqueID = 1;
 var emptyObject$1 = {};
@@ -10100,6 +10132,8 @@ function getByID (id) {
  * 
  * */
 /* eslint-disable */
+'use strict';
+
 function normalizeColor(color) {
   var match;
 
@@ -10440,6 +10474,8 @@ var names = {
  * copy from React-Native processColor
  * */
 /* eslint-disable */
+'use strict';
+
 /* eslint no-bitwise: 0 */
 function processColor(color) {
   if (color === undefined || color === null) {
@@ -10484,6 +10520,8 @@ function validateColorHexValue(val) {
  * Created by zhiyuan.huang@rdder.com on 17/6/21.
  */
 /* eslint-disable */
+'use strict';
+
 var typeProcessors = {};
 
 function addTypeProcessor(processors) {
@@ -10527,6 +10565,8 @@ addTypeProcessor(colorTypes);
  *
  * Created by zhiyuan.huang@rdder.com on 17/6/21.
  */
+
+'use strict';
 
 function getStyle$1 (style) {
   if (typeof style === 'number') {
@@ -10583,6 +10623,8 @@ function install (Vue) {
  * 
  * Created by zhiyuan.huang@rdder.com on 17/6/2.
  */
+
+'use strict';
 
 var idToTemplate = function (id, instance) {
   if (!id) { return }
