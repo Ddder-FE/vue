@@ -1,6 +1,6 @@
 {
   "name": "ddder-template-compiler",
-  "version": "0.0.1",
+  "version": "1.1.0-beta.2",
   "description": "template compiler for Ddder-Vue 2.0",
   "main": "index.js",
   "repository": {
@@ -11,7 +11,7 @@
     "vue",
     "compiler"
   ],
-  "author": "Evan You",
+  "author": "SamHwang1990",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/vuejs/vue/issues"
