@@ -38,7 +38,6 @@ export function processStyleType(type, styles) {
 const colorTypes = {
   color: processColor,
   backgroundColor: processColor,
-  textColor: processColor,
   fillColor: processColor,
   borderColor: processColor
 }

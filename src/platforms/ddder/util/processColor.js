@@ -46,7 +46,7 @@ function validateColorHexValue(val) {
   else return val
 }
 
-export function processColorToRGB(color) {
+export function processColorToRGB(color, keepAlpha = false) {
   if (color === undefined || color === null) {
     return color
   }
@@ -58,8 +58,8 @@ export function processColorToRGB(color) {
   }
 
   // Converts 0xrrggbbaa into 0xaarrggbb
-  int32Color = (int32Color << 24 | int32Color >>> 8) >>> 0
+  int32Color = (int32Color << 24 | int32Color >>> 8) >>> 0;
   let r = int32ColorToRgba(int32Color);
 
-  return RGB(r[0], r[1], r[2])
+  return !keepAlpha ? RGB(r[0], r[1], r[2]) : RGBA(r[0], r[1], r[2], r[3]);
 }

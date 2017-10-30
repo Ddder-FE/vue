@@ -6548,7 +6548,9 @@ function validateColorHexValue(val) {
   else { return val }
 }
 
-function processColorToRGB(color) {
+function processColorToRGB(color, keepAlpha) {
+  if ( keepAlpha === void 0 ) keepAlpha = false;
+
   if (color === undefined || color === null) {
     return color
   }
@@ -6563,7 +6565,7 @@ function processColorToRGB(color) {
   int32Color = (int32Color << 24 | int32Color >>> 8) >>> 0;
   var r = int32ColorToRgba(int32Color);
 
-  return RGB(r[0], r[1], r[2])
+  return !keepAlpha ? RGB(r[0], r[1], r[2]) : RGBA(r[0], r[1], r[2], r[3]);
 }
 
 /**
@@ -6589,7 +6591,19 @@ function textStyle(elm, stylesheet) {
   }
 
   if (fontSize == null && textColorKey == null) { return; }
-  var textStyle = elm.createTextStyle(null, fontSize, processColorToRGB(textColor));
+
+  /*
+   * 使用createTextStyle 是需要注意，由于存在DIV.defaultFontScale 的存在，可以让开发者按场景更改字体大小缩放，
+   * 而createTextStyle 第二个参数，即指定fontSize，若传进来的值不是字符串类型，则不会继承所设置的DIV.defaultFontScale，
+   * 而在我们的场景，需要继承defaultFontScale，所以强制将fontSize 转为字符串。
+   * */
+  if (fontSize == null) {
+    fontSize = null;
+  } else {
+    fontSize = fontSize.toString();
+  }
+
+  var textStyle = elm.createTextStyle(null, fontSize, processColorToRGB(textColor, true));
   elm.currentTextStyle = textStyle;
   elm.setTextStyle(0, elm.textContent.length, textStyle);
 }
@@ -10619,7 +10633,6 @@ function processStyleType(type, styles) {
 var colorTypes = {
   color: processColor,
   backgroundColor: processColor,
-  textColor: processColor,
   fillColor: processColor,
   borderColor: processColor
 };
