@@ -1,5 +1,5 @@
 try {
-  var vueVersion = require('vue').version
+  var vueVersion = require('@ddder/vue').version
 } catch (e) {}
 
 var packageName = require('./package.json').name
