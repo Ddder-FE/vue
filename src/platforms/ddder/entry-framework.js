@@ -16,6 +16,8 @@ const renderer = {
   components
 }
 
+export const version = '__DDDER_VERSION__';
+
 export function init (cfg) {
   renderer.Document = cfg.Document
   renderer.Element = cfg.Element

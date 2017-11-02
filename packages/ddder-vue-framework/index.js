@@ -20,6 +20,8 @@ var renderer = {
   components: components
 };
 
+var version = '2.4.4-ddder.2';
+
 function init (cfg) {
   renderer.Document = cfg.Document;
   renderer.Element = cfg.Element;
@@ -197,6 +199,7 @@ function createVueModuleInstance (instanceId) {
   return Vue
 }
 
+exports.version = version;
 exports.init = init;
 exports.reset = reset;
 exports.createInstance = createInstance;
