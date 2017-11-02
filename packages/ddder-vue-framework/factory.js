@@ -6672,8 +6672,6 @@ function updateStyleSheet (oldVnode, vnode) {
   var newClassString = updateClass(oldVnode, vnode);
   var newStyle = updateStyle(oldVnode, vnode);
 
-  if (!newClassString && !newStyle) { return }
-
   var context = vnode.context;
   var StyleSheet = context.StyleSheet;
 

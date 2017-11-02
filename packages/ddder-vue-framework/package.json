@@ -1,12 +1,19 @@
 {
-  "name": "ddder-vue-framework",
-  "version": "2.3.3-ddder.0",
+  "name": "@ddder/vue",
+  "version": "2.4.4-ddder.1",
   "description": "Vue 2.0 Framework for Ddder",
   "main": "index.js",
-  "repository": "https://github.com/Ddder-FE/vue.git",
-  "author": [
-    "Evan You",
-    "SamHwang1990"
-  ],
-  "license": "MIT"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ddder-fe/vue.git"
+  },
+  "author": "SamHwang1990",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ddder-fe/vue/issues"
+  },
+  "homepage": "https://github.com/ddder-fe/vue#readme",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
 }

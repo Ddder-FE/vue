@@ -61,8 +61,6 @@ function updateStyleSheet (oldVnode, vnode) {
   const newClassString = updateClass(oldVnode, vnode)
   const newStyle = updateStyle(oldVnode, vnode)
 
-  if (!newClassString && !newStyle) return
-
   const context = vnode.context
   const StyleSheet = context.StyleSheet
 
