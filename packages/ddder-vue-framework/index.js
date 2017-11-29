@@ -20,7 +20,7 @@ var renderer = {
   components: components
 };
 
-var version = '2.4.4-ddder.5';
+var version = '2.4.4-ddder.7';
 
 function init (cfg) {
   renderer.Document = cfg.Document;
@@ -174,6 +174,9 @@ function createVueModuleInstance (instanceId) {
   };
 
   // expose ddder-specific info
+  instance.document.Vue = Vue;
+  Vue.document = instance.document;
+
   Vue.prototype.$instanceId = instanceId;
   Vue.prototype.$document = instance.document;
 

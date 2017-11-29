@@ -166,6 +166,9 @@ function createVueModuleInstance (instanceId) {
   }
 
   // expose ddder-specific info
+  instance.document.Vue = Vue
+  Vue.document = instance.document
+
   Vue.prototype.$instanceId = instanceId
   Vue.prototype.$document = instance.document
 
