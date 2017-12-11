@@ -1,6 +1,7 @@
 /* @flow */
 
-import { toNumber, toString, looseEqual, looseIndexOf, nextlySmpDecode } from 'shared/util'
+import { toNumber, toString, looseEqual, looseIndexOf } from 'shared/util'
+import { nextlySmpDecode } from 'core/util/nextlySmpDecoder'
 import { createTextVNode, createEmptyVNode } from 'core/vdom/vnode'
 import { renderList } from './render-list'
 import { renderSlot } from './render-slot'
