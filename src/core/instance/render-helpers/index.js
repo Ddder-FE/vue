@@ -1,6 +1,6 @@
 /* @flow */
 
-import { toNumber, toString, looseEqual, looseIndexOf } from 'shared/util'
+import { toNumber, toString, looseEqual, looseIndexOf, nextlySmpDecode } from 'shared/util'
 import { createTextVNode, createEmptyVNode } from 'core/vdom/vnode'
 import { renderList } from './render-list'
 import { renderSlot } from './render-slot'
@@ -27,4 +27,5 @@ export function installRenderHelpers (target: any) {
   target._e = createEmptyVNode
   target._u = resolveScopedSlots
   target._g = bindObjectListeners
+  target._nextlySmpParser = nextlySmpDecode
 }
