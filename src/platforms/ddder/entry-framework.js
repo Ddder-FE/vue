@@ -52,13 +52,14 @@ export function createInstance (
   appCode = '',
   config = {},
   data,
-  env = {}
+  env = {},
+  parentInstanceId
 ) {
   // Virtual-DOM object.
   // todo: what equal to weex document in ddder
   const document = new renderer.Document(instanceId)
 
-  const instance = instances[instanceId] = { instanceId, config, data, document }
+  const instance = instances[instanceId] = { instanceId, config, data, document, parentInstanceId }
 
   const ddderInstanceVar = {
     config,
@@ -152,11 +153,21 @@ export function registerComponents (newComponents) {
  * Create a fresh instance of Vue for each Weex instance.
  */
 function createVueModuleInstance (instanceId) {
-  const exports = {}
-  VueFactory(exports, renderer)
-  const Vue = exports.Vue
+  const instance = instances[instanceId];
+  const parentInstance = instance.parentInstanceId && instances[instance.parentInstanceId];
 
-  const instance = instances[instanceId]
+  let Vue;
+
+  if (parentInstance && parentInstance.document.Vue) {
+    const SuperVue = parentInstance.document.Vue
+    Vue = SuperVue.extend()
+  } else {
+    const exports = {}
+    VueFactory(exports, renderer)
+    Vue = exports.Vue
+  }
+
+  Vue.version = version
 
   // patch reserved tag detection to account for dynamically registered
   // components

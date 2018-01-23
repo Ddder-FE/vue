@@ -7,10 +7,11 @@
 import { processColorToRGB } from './processColor'
 
 function textStyle(elm, stylesheet) {
-  let fontSize, textColor;
+  let fontSize, textColor, fontFamily;
 
   const fontSizeKey = 'font-size';
   const textColorKey = 'text-color';
+  const fontFamilyKey = 'font-family';
 
   if (stylesheet[fontSizeKey] != null) {
     fontSize = stylesheet[fontSizeKey];
@@ -22,7 +23,12 @@ function textStyle(elm, stylesheet) {
     delete stylesheet[textColorKey];
   }
 
-  if (fontSize == null && textColorKey == null) return;
+  if (stylesheet[fontFamilyKey] != null) {
+    fontFamily = stylesheet[fontFamilyKey];
+    delete stylesheet[fontFamilyKey];
+  }
+
+  if (fontSize == null && textColorKey == null && fontFamily == null) return;
 
   /*
    * 使用createTextStyle 是需要注意，由于存在DIV.defaultFontScale 的存在，可以让开发者按场景更改字体大小缩放，
@@ -35,7 +41,7 @@ function textStyle(elm, stylesheet) {
     fontSize = fontSize.toString();
   }
 
-  let textStyle = elm.createTextStyle(null, fontSize, processColorToRGB(textColor, true));
+  let textStyle = elm.createTextStyle(fontFamily, fontSize, processColorToRGB(textColor, true));
   elm.currentTextStyle = textStyle;
   elm.setTextStyle(0, elm.textContent.length, textStyle);
 }

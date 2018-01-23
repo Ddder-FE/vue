@@ -608,7 +608,7 @@ function logError (err, vm, info) {
 var hasProto = '__proto__' in {};
 
 // Browser environment sniffing
-var inBrowser = typeof window !== 'undefined';
+var inBrowser = typeof window !== 'undefined' && Object.prototype.toString.apply(window) === '[object Window]';
 var UA = inBrowser && window.navigator.userAgent.toLowerCase();
 var isIE = UA && /msie|trident/.test(UA);
 var isIE9 = UA && UA.indexOf('msie 9.0') > 0;
@@ -640,7 +640,7 @@ var _isServer;
 var isServerRendering = function () {
   if (_isServer === undefined) {
     /* istanbul ignore if */
-    if (!inBrowser && typeof global !== 'undefined') {
+    if (!inBrowser && typeof global !== 'undefined' && typeof global['process'] !== 'undefined') {
       // detect presence of vue-server-renderer and avoid
       // Webpack shimming the process
       _isServer = global['process'].env.VUE_ENV === 'server';
@@ -1773,6 +1773,22 @@ function isType (type, fn) {
   return false
 }
 
+/**
+ * Created by zhiyuan.huang@ddder.net.
+ */
+
+'use strict';
+
+var nextlySmpDecode = function(val) {
+  var regexp = /\u0012((?:\w{4})+)\u0013/ig;
+
+  return val.replace(regexp, function(charPoints) {
+    var charPointGroup = charPoints.match(/\w{4}/g).map(function (charPoint) { return eval("'" + '\\u' + charPoint + "'"); });
+    charPointGroup.pop();
+    return charPointGroup.join('');
+  });
+};
+
 /*  */
 
 var mark;
@@ -1848,6 +1864,10 @@ if (process.env.NODE_ENV !== 'production') {
         warnNonPresent(target, key);
       }
       return has || !isAllowed
+    },
+    // older version spidermonkey engine has bug about proxy, which shall specify 'get' and 'has' proxy meanwhile
+    get: function get (target, key) {
+      return target[key]
     }
   };
 
@@ -1883,11 +1903,18 @@ var normalizeEvent = cached(function (name) {
   name = once$$1 ? name.slice(1) : name;
   var capture = name.charAt(0) === '!';
   name = capture ? name.slice(1) : name;
+  var addition = name.charAt(0) === '+';
+  if (addition) {
+    name = name.slice(1)
+    ;var assign;
+    ((assign = name.split('_'), name = assign[0], addition = assign.slice(1)));
+  }
   return {
     name: name,
     once: once$$1,
     capture: capture,
-    passive: passive
+    passive: passive,
+    addition: addition
   }
 });
 
@@ -2880,7 +2907,7 @@ function callUpdatedHooks (queue) {
   while (i--) {
     var watcher = queue[i];
     var vm = watcher.vm;
-    if (vm._watcher === watcher && vm._isMounted) {
+    if (vm._watcher === watcher && vm._isMounted && !vm._isDestroyed) {
       callHook(vm, 'updated');
     }
   }
@@ -3836,6 +3863,7 @@ function installRenderHelpers (target) {
   target._e = createEmptyVNode;
   target._u = resolveScopedSlots;
   target._g = bindObjectListeners;
+  target._nextlySmpParser = nextlySmpDecode;
 }
 
 /*  */
@@ -4153,7 +4181,8 @@ function mergeHook$1 (one, two) {
 // prop and event handler respectively.
 function transformModel (options, data) {
   var prop = (options.model && options.model.prop) || 'value';
-  var event = (options.model && options.model.event) || 'input';(data.props || (data.props = {}))[prop] = data.model.value;
+  var event = (options.model && options.model.event) || 'input';(data.props || (data.props = {}))[prop] = data.model.value
+  ;(options.props || (options.props = {}))[prop] = { type: null };
   var on = data.on || (data.on = {});
   if (isDef(on[event])) {
     on[event] = [data.model.callback].concat(on[event]);
@@ -4612,6 +4641,10 @@ function initExtend (Vue) {
     var Sub = function VueComponent (options) {
       this._init(options);
     };
+
+    // Expose all global api to Sub constructor will lower priority
+    initGlobalAPI(Sub);
+
     Sub.prototype = Object.create(Super.prototype);
     Sub.prototype.constructor = Sub;
     Sub.cid = cid++;
@@ -5247,7 +5280,7 @@ function registerRef (vnode, isRemoval) {
 
 var emptyNode = new VNode('', {}, []);
 
-var hooks = ['create', 'activate', 'update', 'remove', 'destroy'];
+var hooks = ['precreate', 'create', 'activate', 'update', 'remove', 'destroy'];
 
 function sameVnode (a, b) {
   return (
@@ -5267,7 +5300,8 @@ function sameVnode (a, b) {
 }
 
 function sameInputType (a, b) {
-  if (a.tag !== 'input') { return true }
+  // a.tag maybe undefined, and in ddder enviroment, input tag will get 'INPUT'
+  if (a.tag !== 'input' || a.tag !== 'INPUT') { return true }
   var i;
   var typeA = isDef(i = a.data) && isDef(i = i.attrs) && i.type;
   var typeB = isDef(i = b.data) && isDef(i = i.attrs) && i.type;
@@ -5365,6 +5399,19 @@ function createPatchFunction (backend) {
 
       /* istanbul ignore if */
       {
+        if (vnode.parent) {
+          var parentVnode = vnode.parent;
+          if (isDef(parentVnode.data)) {
+            var oldElm = parentVnode.elm;
+            parentVnode.elm = vnode.elm;
+            invokePreCreateHooks(parentVnode, insertedVnodeQueue);
+            parentVnode.elm = oldElm;
+          }
+        }
+
+        if (isDef(data)) {
+          invokePreCreateHooks(vnode, insertedVnodeQueue);
+        }
         createChildren(vnode, children, insertedVnodeQueue);
         if (isDef(data)) {
           invokeCreateHooks(vnode, insertedVnodeQueue);
@@ -5472,6 +5519,16 @@ function createPatchFunction (backend) {
       vnode = vnode.componentInstance._vnode;
     }
     return isDef(vnode.tag)
+  }
+
+  function invokePreCreateHooks (vnode) {
+    for (var i$1 = 0; i$1 < cbs.precreate.length; ++i$1) {
+      cbs.precreate[i$1](emptyNode, vnode);
+    }
+    i = vnode.data.hook; // Reuse variable
+    if (isDef(i)) {
+      if (isDef(i.precreate)) { i.precreate(emptyNode, vnode); }
+    }
   }
 
   function invokeCreateHooks (vnode, insertedVnodeQueue) {
@@ -6319,6 +6376,19 @@ function addHandler (
       'Passive handler can\'t prevent default event.'
     );
   }
+
+  if (modifiers && modifiers.custom) {
+    delete modifiers.custom;
+    modifiers.eventName = name;
+    name = '+custom_' + name;
+  }
+
+  if (modifiers && modifiers.notification) {
+    delete modifiers.notification;
+    modifiers.eventName = name;
+    name = '+notification_' + name;
+  }
+
   // check capture modifier
   if (modifiers && modifiers.capture) {
     delete modifiers.capture;
@@ -8700,6 +8770,7 @@ var delimiters;
 var transforms;
 var preTransforms;
 var postTransforms;
+var endTransforms;
 var platformIsPreTag;
 var platformMustUseProp;
 var platformGetTagNamespace;
@@ -8737,6 +8808,7 @@ function parse (
   transforms = pluckModuleFunction(options.modules, 'transformNode');
   preTransforms = pluckModuleFunction(options.modules, 'preTransformNode');
   postTransforms = pluckModuleFunction(options.modules, 'postTransformNode');
+  endTransforms = pluckModuleFunction(options.modules, 'endTransformNode');
 
   delimiters = options.delimiters;
 
@@ -8893,6 +8965,11 @@ function parse (
       stack.length -= 1;
       currentParent = stack[stack.length - 1];
       endPre(element);
+
+      // apply end-transforms
+      for (var i = 0; i < endTransforms.length; i++) {
+        endTransforms[i](element, options);
+      }
     },
 
     chars: function chars (text) {
@@ -9579,7 +9656,8 @@ var modifierCode = {
 function genHandlers (
   events,
   isNative,
-  warn
+  warn,
+  eventModifier
 ) {
   var res = isNative ? 'nativeOn:{' : 'on:{';
   for (var name in events) {
@@ -9594,21 +9672,22 @@ function genHandlers (
         "do not actually fire \"click\" events."
       );
     }
-    res += "\"" + name + "\":" + (genHandler(name, handler)) + ",";
+    res += "\"" + name + "\":" + (genHandler(name, handler, eventModifier)) + ",";
   }
   return res.slice(0, -1) + '}'
 }
 
 function genHandler (
   name,
-  handler
+  handler,
+  eventModifier
 ) {
   if (!handler) {
     return 'function(){}'
   }
 
   if (Array.isArray(handler)) {
-    return ("[" + (handler.map(function (handler) { return genHandler(name, handler); }).join(',')) + "]")
+    return ("[" + (handler.map(function (handler) { return genHandler(name, handler, eventModifier); }).join(',')) + "]")
   }
 
   var isMethodPath = simplePathRE.test(handler.value);
@@ -9622,6 +9701,12 @@ function genHandler (
     var code = '';
     var genModifierCode = '';
     var keys = [];
+
+    if (eventModifier) {
+      var customModifierCode = eventModifier(name, handler.modifiers);
+      if (customModifierCode) { genModifierCode += customModifierCode; }
+    }
+
     for (var key in handler.modifiers) {
       if (modifierCode[key]) {
         genModifierCode += modifierCode[key];
@@ -9710,6 +9795,7 @@ var CodegenState = function CodegenState (options) {
   this.directives = extend(extend({}, baseDirectives), options.directives);
   var isReservedTag = options.isReservedTag || no;
   this.maybeComponent = function (el) { return !isReservedTag(el.tag); };
+  this.eventModifier = options.eventModifier;
   this.onceId = 0;
   this.staticRenderFns = [];
 };
@@ -9904,10 +9990,10 @@ function genData$2 (el, state) {
   }
   // event handlers
   if (el.events) {
-    data += (genHandlers(el.events, false, state.warn)) + ",";
+    data += (genHandlers(el.events, false, state.warn, state.eventModifier)) + ",";
   }
   if (el.nativeEvents) {
-    data += (genHandlers(el.nativeEvents, true, state.warn)) + ",";
+    data += (genHandlers(el.nativeEvents, true, state.warn, state.eventModifier)) + ",";
   }
   // slot target
   // only for non-scoped slots

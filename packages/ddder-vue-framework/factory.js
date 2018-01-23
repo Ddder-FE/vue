@@ -1,6 +1,6 @@
 /*!
  * Vue.js v2.5.0
- * (c) 2014-2017 Evan You
+ * (c) 2014-2018 Evan You
  * Released under the MIT License.
  */
 'use strict';
@@ -4645,6 +4645,10 @@ function initExtend (Vue) {
     var Sub = function VueComponent (options) {
       this._init(options);
     };
+
+    // Expose all global api to Sub constructor will lower priority
+    initGlobalAPI(Sub);
+
     Sub.prototype = Object.create(Super.prototype);
     Sub.prototype.constructor = Sub;
     Sub.cid = cid++;
@@ -6754,10 +6758,11 @@ function processColorToRGB(color, keepAlpha) {
 'use strict';
 
 function textStyle(elm, stylesheet) {
-  var fontSize, textColor;
+  var fontSize, textColor, fontFamily;
 
   var fontSizeKey = 'font-size';
   var textColorKey = 'text-color';
+  var fontFamilyKey = 'font-family';
 
   if (stylesheet[fontSizeKey] != null) {
     fontSize = stylesheet[fontSizeKey];
@@ -6769,7 +6774,12 @@ function textStyle(elm, stylesheet) {
     delete stylesheet[textColorKey];
   }
 
-  if (fontSize == null && textColorKey == null) { return; }
+  if (stylesheet[fontFamilyKey] != null) {
+    fontFamily = stylesheet[fontFamilyKey];
+    delete stylesheet[fontFamilyKey];
+  }
+
+  if (fontSize == null && textColorKey == null && fontFamily == null) { return; }
 
   /*
    * 使用createTextStyle 是需要注意，由于存在DIV.defaultFontScale 的存在，可以让开发者按场景更改字体大小缩放，
@@ -6782,7 +6792,7 @@ function textStyle(elm, stylesheet) {
     fontSize = fontSize.toString();
   }
 
-  var textStyle = elm.createTextStyle(null, fontSize, processColorToRGB(textColor, true));
+  var textStyle = elm.createTextStyle(fontFamily, fontSize, processColorToRGB(textColor, true));
   elm.currentTextStyle = textStyle;
   elm.setTextStyle(0, elm.textContent.length, textStyle);
 }

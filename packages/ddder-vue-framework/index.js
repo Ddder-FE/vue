@@ -20,7 +20,7 @@ var renderer = {
   components: components
 };
 
-var version = '2.5.0-ddder.1';
+var version = '2.5.0-ddder.2';
 
 function init (cfg) {
   renderer.Document = cfg.Document;
@@ -56,7 +56,8 @@ function createInstance (
   appCode,
   config,
   data,
-  env
+  env,
+  parentInstanceId
 ) {
   if ( appCode === void 0 ) appCode = '';
   if ( config === void 0 ) config = {};
@@ -66,7 +67,7 @@ function createInstance (
   // todo: what equal to weex document in ddder
   var document = new renderer.Document(instanceId);
 
-  var instance = instances[instanceId] = { instanceId: instanceId, config: config, data: data, document: document };
+  var instance = instances[instanceId] = { instanceId: instanceId, config: config, data: data, document: document, parentInstanceId: parentInstanceId };
 
   var ddderInstanceVar = {
     config: config,
@@ -160,11 +161,21 @@ function registerComponents (newComponents) {
  * Create a fresh instance of Vue for each Weex instance.
  */
 function createVueModuleInstance (instanceId) {
-  var exports = {};
-  VueFactory(exports, renderer);
-  var Vue = exports.Vue;
-
   var instance = instances[instanceId];
+  var parentInstance = instance.parentInstanceId && instances[instance.parentInstanceId];
+
+  var Vue;
+
+  if (parentInstance && parentInstance.document.Vue) {
+    var SuperVue = parentInstance.document.Vue;
+    Vue = SuperVue.extend();
+  } else {
+    var exports = {};
+    VueFactory(exports, renderer);
+    Vue = exports.Vue;
+  }
+
+  Vue.version = version;
 
   // patch reserved tag detection to account for dynamically registered
   // components

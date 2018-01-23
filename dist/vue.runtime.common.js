@@ -606,7 +606,7 @@ function logError (err, vm, info) {
 var hasProto = '__proto__' in {};
 
 // Browser environment sniffing
-var inBrowser = typeof window !== 'undefined';
+var inBrowser = typeof window !== 'undefined' && Object.prototype.toString.apply(window) === '[object Window]';
 var UA = inBrowser && window.navigator.userAgent.toLowerCase();
 var isIE = UA && /msie|trident/.test(UA);
 var isIE9 = UA && UA.indexOf('msie 9.0') > 0;
@@ -638,7 +638,7 @@ var _isServer;
 var isServerRendering = function () {
   if (_isServer === undefined) {
     /* istanbul ignore if */
-    if (!inBrowser && typeof global !== 'undefined') {
+    if (!inBrowser && typeof global !== 'undefined' && typeof global['process'] !== 'undefined') {
       // detect presence of vue-server-renderer and avoid
       // Webpack shimming the process
       _isServer = global['process'].env.VUE_ENV === 'server';
@@ -1771,6 +1771,22 @@ function isType (type, fn) {
   return false
 }
 
+/**
+ * Created by zhiyuan.huang@ddder.net.
+ */
+
+'use strict';
+
+var nextlySmpDecode = function(val) {
+  var regexp = /\u0012((?:\w{4})+)\u0013/ig;
+
+  return val.replace(regexp, function(charPoints) {
+    var charPointGroup = charPoints.match(/\w{4}/g).map(function (charPoint) { return eval("'" + '\\u' + charPoint + "'"); });
+    charPointGroup.pop();
+    return charPointGroup.join('');
+  });
+};
+
 /*  */
 
 /* not type checking this file because flow doesn't play well with Proxy */
@@ -1823,6 +1839,10 @@ if (process.env.NODE_ENV !== 'production') {
         warnNonPresent(target, key);
       }
       return has || !isAllowed
+    },
+    // older version spidermonkey engine has bug about proxy, which shall specify 'get' and 'has' proxy meanwhile
+    get: function get (target, key) {
+      return target[key]
     }
   };
 
@@ -1881,11 +1901,18 @@ var normalizeEvent = cached(function (name) {
   name = once$$1 ? name.slice(1) : name;
   var capture = name.charAt(0) === '!';
   name = capture ? name.slice(1) : name;
+  var addition = name.charAt(0) === '+';
+  if (addition) {
+    name = name.slice(1)
+    ;var assign;
+    ((assign = name.split('_'), name = assign[0], addition = assign.slice(1)));
+  }
   return {
     name: name,
     once: once$$1,
     capture: capture,
-    passive: passive
+    passive: passive,
+    addition: addition
   }
 });
 
@@ -2878,7 +2905,7 @@ function callUpdatedHooks (queue) {
   while (i--) {
     var watcher = queue[i];
     var vm = watcher.vm;
-    if (vm._watcher === watcher && vm._isMounted) {
+    if (vm._watcher === watcher && vm._isMounted && !vm._isDestroyed) {
       callHook(vm, 'updated');
     }
   }
@@ -3834,6 +3861,7 @@ function installRenderHelpers (target) {
   target._e = createEmptyVNode;
   target._u = resolveScopedSlots;
   target._g = bindObjectListeners;
+  target._nextlySmpParser = nextlySmpDecode;
 }
 
 /*  */
@@ -4151,7 +4179,8 @@ function mergeHook$1 (one, two) {
 // prop and event handler respectively.
 function transformModel (options, data) {
   var prop = (options.model && options.model.prop) || 'value';
-  var event = (options.model && options.model.event) || 'input';(data.props || (data.props = {}))[prop] = data.model.value;
+  var event = (options.model && options.model.event) || 'input';(data.props || (data.props = {}))[prop] = data.model.value
+  ;(options.props || (options.props = {}))[prop] = { type: null };
   var on = data.on || (data.on = {});
   if (isDef(on[event])) {
     on[event] = [data.model.callback].concat(on[event]);
@@ -4610,6 +4639,10 @@ function initExtend (Vue) {
     var Sub = function VueComponent (options) {
       this._init(options);
     };
+
+    // Expose all global api to Sub constructor will lower priority
+    initGlobalAPI(Sub);
+
     Sub.prototype = Object.create(Super.prototype);
     Sub.prototype.constructor = Sub;
     Sub.cid = cid++;
@@ -5245,7 +5278,7 @@ function registerRef (vnode, isRemoval) {
 
 var emptyNode = new VNode('', {}, []);
 
-var hooks = ['create', 'activate', 'update', 'remove', 'destroy'];
+var hooks = ['precreate', 'create', 'activate', 'update', 'remove', 'destroy'];
 
 function sameVnode (a, b) {
   return (
@@ -5265,7 +5298,8 @@ function sameVnode (a, b) {
 }
 
 function sameInputType (a, b) {
-  if (a.tag !== 'input') { return true }
+  // a.tag maybe undefined, and in ddder enviroment, input tag will get 'INPUT'
+  if (a.tag !== 'input' || a.tag !== 'INPUT') { return true }
   var i;
   var typeA = isDef(i = a.data) && isDef(i = i.attrs) && i.type;
   var typeB = isDef(i = b.data) && isDef(i = i.attrs) && i.type;
@@ -5363,6 +5397,19 @@ function createPatchFunction (backend) {
 
       /* istanbul ignore if */
       {
+        if (vnode.parent) {
+          var parentVnode = vnode.parent;
+          if (isDef(parentVnode.data)) {
+            var oldElm = parentVnode.elm;
+            parentVnode.elm = vnode.elm;
+            invokePreCreateHooks(parentVnode, insertedVnodeQueue);
+            parentVnode.elm = oldElm;
+          }
+        }
+
+        if (isDef(data)) {
+          invokePreCreateHooks(vnode, insertedVnodeQueue);
+        }
         createChildren(vnode, children, insertedVnodeQueue);
         if (isDef(data)) {
           invokeCreateHooks(vnode, insertedVnodeQueue);
@@ -5470,6 +5517,16 @@ function createPatchFunction (backend) {
       vnode = vnode.componentInstance._vnode;
     }
     return isDef(vnode.tag)
+  }
+
+  function invokePreCreateHooks (vnode) {
+    for (var i$1 = 0; i$1 < cbs.precreate.length; ++i$1) {
+      cbs.precreate[i$1](emptyNode, vnode);
+    }
+    i = vnode.data.hook; // Reuse variable
+    if (isDef(i)) {
+      if (isDef(i.precreate)) { i.precreate(emptyNode, vnode); }
+    }
   }
 
   function invokeCreateHooks (vnode, insertedVnodeQueue) {

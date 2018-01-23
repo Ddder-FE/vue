@@ -3,6 +3,7 @@
 import { ASSET_TYPES } from 'shared/constants'
 import { warn, extend, mergeOptions } from '../util/index'
 import { defineComputed, proxy } from '../instance/state'
+import { initGlobalAPI } from './index'
 
 export function initExtend (Vue: GlobalAPI) {
   /**
@@ -39,6 +40,10 @@ export function initExtend (Vue: GlobalAPI) {
     const Sub = function VueComponent (options) {
       this._init(options)
     }
+
+    // Expose all global api to Sub constructor will lower priority
+    initGlobalAPI(Sub)
+
     Sub.prototype = Object.create(Super.prototype)
     Sub.prototype.constructor = Sub
     Sub.cid = cid++
