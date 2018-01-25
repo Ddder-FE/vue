@@ -6819,9 +6819,12 @@ function setStyle (elm, styleSheet) {
     styleSheet[styleSheet] = arguments[2];
   }
 
+  var styleSheetKeys = Object.keys(styleSheet);
+  if (!styleSheetKeys.length) { return; }
+
   var normalizeStylesheet = {};
 
-  Object.keys(styleSheet).forEach(function (propName) {
+  styleSheetKeys.forEach(function (propName) {
     var propValue = styleSheet[propName];
     if (propValue == null) { return; }
 

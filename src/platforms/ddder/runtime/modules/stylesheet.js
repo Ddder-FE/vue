@@ -19,9 +19,12 @@ export function setStyle (elm, styleSheet) {
     styleSheet[styleSheet] = arguments[2];
   }
 
+  const styleSheetKeys = Object.keys(styleSheet);
+  if (!styleSheetKeys.length) return;
+
   const normalizeStylesheet = {};
 
-  Object.keys(styleSheet).forEach(propName => {
+  styleSheetKeys.forEach(propName => {
     const propValue = styleSheet[propName];
     if (propValue == null) return;
 
