@@ -1361,9 +1361,13 @@ var nextTick = (function () {
       p.then(nextTickHandler);
     };
   } else {
-    // fallback to setTimeout
+    // fallback to one time setInterval instead setTimeout in ddder
     timerFunc = function () {
-      setTimeout(nextTickHandler, 0);
+      var timeId;
+      timeId = setInterval(function() {
+        nextTickHandler();
+        clearInterval(timeId);
+      }, 0);
     };
   }
 

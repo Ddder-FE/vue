@@ -112,9 +112,13 @@ export const nextTick = (function () {
       p.then(nextTickHandler)
     }
   } else {
-    // fallback to setTimeout
+    // fallback to one time setInterval instead setTimeout in ddder
     timerFunc = () => {
-      setTimeout(nextTickHandler, 0)
+      let timeId;
+      timeId = setInterval(function() {
+        nextTickHandler();
+        clearInterval(timeId);
+      }, 0);
     }
   }
 
