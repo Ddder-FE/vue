@@ -6016,18 +6016,24 @@ function genClassForVnode (vnode) {
   var data = vnode.data;
   var parentNode = vnode;
   var childNode = vnode;
+
+  var classString = renderClass(data.staticClass, data.class);
+
   while (isDef(childNode.componentInstance)) {
     childNode = childNode.componentInstance._vnode;
     if (childNode.data) {
+      classString = concat(renderClass(childNode.data.staticClass, childNode.data.class), classString);
       data = mergeClassData(childNode.data, data);
     }
   }
   while (isDef(parentNode = parentNode.parent)) {
     if (parentNode.data) {
+      classString = concat(classString, renderClass(parentNode.data.staticClass, parentNode.data.class));
       data = mergeClassData(data, parentNode.data);
     }
   }
-  return renderClass(data.staticClass, data.class)
+
+  return classString
 }
 
 function mergeClassData (child, parent) {
@@ -6888,7 +6894,17 @@ function updateStyleSheet (oldVnode, vnode) {
       if (val.match(/^\d*$/)) {
         styleList.push(Number(val));
       } else {
-        if (context.styleScope && context.styleScope[val]) { styleList.push(context.styleScope[val]); }
+        var styleScope = context.styleScope && context.styleScope[val];
+        var parentNode = vnode;
+
+        while (isUndef(styleScope) && isDef(parentNode = parentNode.parent)) {
+          var parentContext = parentNode.context;
+          styleScope = parentContext.styleScope && parentContext.styleScope[val];
+        }
+
+        if (styleScope) {
+          styleList.push(styleScope);
+        }
       }
     }
   }

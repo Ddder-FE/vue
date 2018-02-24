@@ -4,7 +4,7 @@
 
 'use strict'
 
-import { isUndef, cached } from 'shared/util'
+import { isUndef, isDef, cached } from 'shared/util'
 
 import updateClass from './class'
 import updateStyle from './style'
@@ -84,7 +84,17 @@ function updateStyleSheet (oldVnode, vnode) {
       if (val.match(/^\d*$/)) {
         styleList.push(Number(val))
       } else {
-        if (context.styleScope && context.styleScope[val]) styleList.push(context.styleScope[val])
+        let styleScope = context.styleScope && context.styleScope[val];
+        let parentNode = vnode;
+
+        while (isUndef(styleScope) && isDef(parentNode = parentNode.parent)) {
+          let parentContext = parentNode.context;
+          styleScope = parentContext.styleScope && parentContext.styleScope[val];
+        }
+
+        if (styleScope) {
+          styleList.push(styleScope);
+        }
       }
     }
   }

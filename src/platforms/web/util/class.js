@@ -6,18 +6,24 @@ export function genClassForVnode (vnode: VNode): string {
   let data = vnode.data
   let parentNode = vnode
   let childNode = vnode
+
+  let classString = renderClass(data.staticClass, data.class);
+
   while (isDef(childNode.componentInstance)) {
     childNode = childNode.componentInstance._vnode
     if (childNode.data) {
+      classString = concat(renderClass(childNode.data.staticClass, childNode.data.class), classString)
       data = mergeClassData(childNode.data, data)
     }
   }
   while (isDef(parentNode = parentNode.parent)) {
     if (parentNode.data) {
+      classString = concat(classString, renderClass(parentNode.data.staticClass, parentNode.data.class))
       data = mergeClassData(data, parentNode.data)
     }
   }
-  return renderClass(data.staticClass, data.class)
+
+  return classString
 }
 
 function mergeClassData (child: VNodeData, parent: VNodeData): {
