@@ -1966,7 +1966,7 @@ function updateListeners (
       if (isUndef(cur.fns)) {
         cur = on[name] = createFnInvoker(cur);
       }
-      add(event.name, cur, event.once, event.capture, event.passive);
+      add(event.name, cur, event.once, event.capture, event.passive, event.addition);
     } else if (cur !== old) {
       old.fns = cur;
       on[name] = old;
