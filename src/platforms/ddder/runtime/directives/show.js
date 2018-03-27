@@ -25,9 +25,34 @@ function setElementDisplay (el: any, display: string) {
   }
 }
 
+function getElementBoxStyleMap(el: any) {
+  if (!el || !el.getBoxStyle) return {};
+
+  const boxStyleString = el.getBoxStyle();
+  const boxStyleMap = boxStyleString.split(';').reduce((result, styleKVString) => {
+    if (styleKVString == '') return result;
+
+    let styleKVArr = styleKVString.split(':');
+    let key = styleKVArr[0].trim();
+    let value = styleKVArr[1].trim();
+
+    result[key] = value;
+    return result;
+  }, {});
+
+  return boxStyleMap;
+}
+
 function getElementDisplay (el: any) {
-  if (!el.visible) return 'none'
-  return el.display ? 'inline' : 'block'
+  if (!el.visible) return 'none';
+
+  const boxStyleMap = getElementBoxStyleMap(el);
+
+  return boxStyleMap.hasOwnProperty('display')
+    ? boxStyleMap['display']
+    : el.display
+      ? 'inline'
+      : 'block'
 }
 
 export default {

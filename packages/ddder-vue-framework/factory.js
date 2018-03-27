@@ -7388,9 +7388,34 @@ function setElementDisplay (el, display) {
   }
 }
 
+function getElementBoxStyleMap(el) {
+  if (!el || !el.getBoxStyle) { return {}; }
+
+  var boxStyleString = el.getBoxStyle();
+  var boxStyleMap = boxStyleString.split(';').reduce(function (result, styleKVString) {
+    if (styleKVString == '') { return result; }
+
+    var styleKVArr = styleKVString.split(':');
+    var key = styleKVArr[0].trim();
+    var value = styleKVArr[1].trim();
+
+    result[key] = value;
+    return result;
+  }, {});
+
+  return boxStyleMap;
+}
+
 function getElementDisplay (el) {
-  if (!el.visible) { return 'none' }
-  return el.display ? 'inline' : 'block'
+  if (!el.visible) { return 'none'; }
+
+  var boxStyleMap = getElementBoxStyleMap(el);
+
+  return boxStyleMap.hasOwnProperty('display')
+    ? boxStyleMap['display']
+    : el.display
+      ? 'inline'
+      : 'block'
 }
 
 var show = {
