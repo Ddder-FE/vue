@@ -5412,8 +5412,23 @@ function createPatchFunction (backend) {
     }
     if (isDef(i = vnode.children)) {
       for (j = 0; j < vnode.children.length; ++j) {
-        invokeDestroyHook(vnode.children[j]);
+        var childVNode = vnode.children[j];
+
+        invokeDestroyHook(childVNode);
+
+        var childComponentInstance = childVNode.componentInstance;
+        if (childComponentInstance) {
+          childComponentInstance.$vnode = childComponentInstance._vnode = null;
+          childComponentInstance.$el = null;
+        }
+
+        childVNode.componentInstance = null;
+        childVNode.elm = undefined;
+
+        vnode.children[j] = undefined;
       }
+
+      vnode.children = [];
     }
   }
 
