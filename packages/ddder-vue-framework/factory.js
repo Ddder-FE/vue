@@ -5424,11 +5424,7 @@ function createPatchFunction (backend) {
 
         childVNode.componentInstance = null;
         childVNode.elm = undefined;
-
-        vnode.children[j] = undefined;
       }
-
-      vnode.children = [];
     }
   }
 
