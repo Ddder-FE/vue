@@ -6731,25 +6731,18 @@ function processColor(color) {
 }
 
 function int32ColorToRgba(val) {
-  var aRgbInt10ColorArray = val.toString(16).match(/.{1,2}/g) || [];
+  var b = val & 255;
 
-  var a = aRgbInt10ColorArray[0];
-  var r = aRgbInt10ColorArray[1];
-  var g = aRgbInt10ColorArray[2];
-  var b = aRgbInt10ColorArray[3];
+  val = val >>> 8;
+  var g = val & 255;
 
-  a = a ? validateColorHexValue(parseInt(a, 16)) : 0;
-  r = r ? validateColorHexValue(parseInt(r, 16)) : 0;
-  g = g ? validateColorHexValue(parseInt(g, 16)) : 0;
-  b = b ? validateColorHexValue(parseInt(b, 16)) : 0;
+  val = val >>> 8;
+  var r = val & 255;
+
+  val = val >>> 8;
+  var a = val & 255;
 
   return [r, g, b, a]
-}
-
-function validateColorHexValue(val) {
-  if (val > 255) { return 255 }
-  else if (val < 0) { return 0 }
-  else { return val }
 }
 
 function processColorToRGB(color, keepAlpha) {
