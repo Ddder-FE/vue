@@ -25,17 +25,16 @@ export default function processColor(color) {
 }
 
 function int32ColorToRgba(val) {
-  let aRgbInt10ColorArray = val.toString(16).match(/.{1,2}/g) || []
+  const b = val & 255
 
-  let a = aRgbInt10ColorArray[0]
-  let r = aRgbInt10ColorArray[1]
-  let g = aRgbInt10ColorArray[2]
-  let b = aRgbInt10ColorArray[3]
+  val = val >>> 8
+  const g = val & 255
 
-  a = a ? validateColorHexValue(parseInt(a, 16)) : 0
-  r = r ? validateColorHexValue(parseInt(r, 16)) : 0
-  g = g ? validateColorHexValue(parseInt(g, 16)) : 0
-  b = b ? validateColorHexValue(parseInt(b, 16)) : 0
+  val = val >>> 8
+  const r = val & 255
+
+  val = val >>> 8
+  const a = val & 255
 
   return [r, g, b, a]
 }
