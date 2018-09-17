@@ -675,13 +675,39 @@ var nextTick = (function () {
   var pending = false;
   var timerFunc;
 
+  var checkInterruptSupport = isNative(global.checkInterrupt);
+  var requestInterruptSupport = isNative(global.requestInterrupt);
+
+  function tryToInterruptFlushing () {
+    if (checkInterruptSupport && global.checkInterrupt()) {
+      return
+    }
+
+    if (requestInterruptSupport) {
+      global.requestInterrupt(1);
+    }
+  }
+
+  function tryToContinueFlushing () {
+    if (requestInterruptSupport) {
+      if (checkInterruptSupport && !global.checkInterrupt()) {
+        return
+      }
+
+      global.requestInterrupt(0);
+    }
+  }
+
   function nextTickHandler () {
     pending = false;
     var copies = callbacks.slice(0);
     callbacks.length = 0;
+
+    tryToInterruptFlushing();
     for (var i = 0; i < copies.length; i++) {
       copies[i]();
     }
+    tryToContinueFlushing();
   }
 
   // An asynchronous deferring mechanism.
