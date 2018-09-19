@@ -5454,7 +5454,7 @@ function createPatchFunction (backend) {
       componentInstance = null;
     }
 
-    if (!vnode.data.keepAlive) {
+    if (!isDef(data) || !vnode.data.keepAlive) {
       vnode.componentInstance = null;
       vnode.elm = undefined;
       vnode.context = null;  // 这是最关键的
