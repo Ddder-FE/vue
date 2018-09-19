@@ -1,6 +1,6 @@
 {
   "name": "@ddder/template-compiler",
-  "version": "2.5.0-ddder.13",
+  "version": "2.5.0-ddder.14",
   "description": "template compiler for Ddder-Vue 2.0",
   "main": "index.js",
   "repository": {
