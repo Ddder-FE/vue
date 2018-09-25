@@ -1319,14 +1319,9 @@ var nextTick = (function () {
   var pending = false;
   var timerFunc;
 
-  var checkInterruptSupport = isNative(global.checkInterrupt);
   var requestInterruptSupport = isNative(global.requestInterrupt);
 
   function tryToInterruptFlushing () {
-    if (checkInterruptSupport && global.checkInterrupt()) {
-      return
-    }
-
     if (requestInterruptSupport) {
       global.requestInterrupt(1);
     }
@@ -1334,10 +1329,6 @@ var nextTick = (function () {
 
   function tryToContinueFlushing () {
     if (requestInterruptSupport) {
-      if (checkInterruptSupport && !global.checkInterrupt()) {
-        return
-      }
-
       global.requestInterrupt(0);
     }
   }

@@ -356,21 +356,21 @@ export function createPatchFunction (backend) {
     }
 
     // 需要清理各种引用，防止内存泄漏或不主动释放
-    let componentInstance = vnode.componentInstance;
-    if (componentInstance && !componentInstance._inactive) {
-      componentInstance.$vnode = componentInstance._vnode = null;
-      componentInstance.$parent = null;
-      componentInstance.$el = null;
-      componentInstance.$options.parent = null;
-      componentInstance = null;
-    }
-
-    if (!isDef(data) || !vnode.data.keepAlive) {
-      vnode.componentInstance = null;
-      vnode.elm = undefined;
-      vnode.context = null;  // 这是最关键的
-      vnode.ctx = null;
-    }
+    // let componentInstance = vnode.componentInstance;
+    // if (componentInstance && !componentInstance._inactive) {
+    //   componentInstance.$vnode = componentInstance._vnode = null;
+    //   componentInstance.$parent = null;
+    //   componentInstance.$el = null;
+    //   componentInstance.$options.parent = null;
+    //   componentInstance = null;
+    // }
+    //
+    // if (!isDef(data) || !vnode.data.keepAlive) {
+    //   vnode.componentInstance = null;
+    //   vnode.elm = undefined;
+    //   vnode.context = null;  // 这是最关键的
+    //   vnode.ctx = null;
+    // }
   }
 
   function removeVnodes (parentElm, vnodes, startIdx, endIdx) {

@@ -675,14 +675,9 @@ var nextTick = (function () {
   var pending = false;
   var timerFunc;
 
-  var checkInterruptSupport = isNative(global.checkInterrupt);
   var requestInterruptSupport = isNative(global.requestInterrupt);
 
   function tryToInterruptFlushing () {
-    if (checkInterruptSupport && global.checkInterrupt()) {
-      return
-    }
-
     if (requestInterruptSupport) {
       global.requestInterrupt(1);
     }
@@ -690,10 +685,6 @@ var nextTick = (function () {
 
   function tryToContinueFlushing () {
     if (requestInterruptSupport) {
-      if (checkInterruptSupport && !global.checkInterrupt()) {
-        return
-      }
-
       global.requestInterrupt(0);
     }
   }
@@ -5445,21 +5436,21 @@ function createPatchFunction (backend) {
     }
 
     // 需要清理各种引用，防止内存泄漏或不主动释放
-    var componentInstance = vnode.componentInstance;
-    if (componentInstance && !componentInstance._inactive) {
-      componentInstance.$vnode = componentInstance._vnode = null;
-      componentInstance.$parent = null;
-      componentInstance.$el = null;
-      componentInstance.$options.parent = null;
-      componentInstance = null;
-    }
-
-    if (!isDef(data) || !vnode.data.keepAlive) {
-      vnode.componentInstance = null;
-      vnode.elm = undefined;
-      vnode.context = null;  // 这是最关键的
-      vnode.ctx = null;
-    }
+    // let componentInstance = vnode.componentInstance;
+    // if (componentInstance && !componentInstance._inactive) {
+    //   componentInstance.$vnode = componentInstance._vnode = null;
+    //   componentInstance.$parent = null;
+    //   componentInstance.$el = null;
+    //   componentInstance.$options.parent = null;
+    //   componentInstance = null;
+    // }
+    //
+    // if (!isDef(data) || !vnode.data.keepAlive) {
+    //   vnode.componentInstance = null;
+    //   vnode.elm = undefined;
+    //   vnode.context = null;  // 这是最关键的
+    //   vnode.ctx = null;
+    // }
   }
 
   function removeVnodes (parentElm, vnodes, startIdx, endIdx) {

@@ -70,14 +70,9 @@ export const nextTick = (function () {
   let pending = false
   let timerFunc
 
-  const checkInterruptSupport = isNative(global.checkInterrupt)
   const requestInterruptSupport = isNative(global.requestInterrupt)
 
   function tryToInterruptFlushing () {
-    if (checkInterruptSupport && global.checkInterrupt()) {
-      return
-    }
-
     if (requestInterruptSupport) {
       global.requestInterrupt(1)
     }
@@ -85,10 +80,6 @@ export const nextTick = (function () {
 
   function tryToContinueFlushing () {
     if (requestInterruptSupport) {
-      if (checkInterruptSupport && !global.checkInterrupt()) {
-        return
-      }
-
       global.requestInterrupt(0)
     }
   }
