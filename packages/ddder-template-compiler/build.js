@@ -1311,6 +1311,20 @@ var hasSymbol =
   typeof Symbol !== 'undefined' && isNative(Symbol) &&
   typeof Reflect !== 'undefined' && isNative(Reflect.ownKeys);
 
+var requestInterruptSupport = isNative(global.requestInterrupt);
+
+function tryToInterruptFlushing () {
+  if (requestInterruptSupport) {
+    global.requestInterrupt(1);
+  }
+}
+
+function tryToContinueFlushing () {
+  if (requestInterruptSupport) {
+    global.requestInterrupt(0);
+  }
+}
+
 /**
  * Defer a task to execute it asynchronously.
  */
@@ -1318,20 +1332,6 @@ var nextTick = (function () {
   var callbacks = [];
   var pending = false;
   var timerFunc;
-
-  var requestInterruptSupport = isNative(global.requestInterrupt);
-
-  function tryToInterruptFlushing () {
-    if (requestInterruptSupport) {
-      global.requestInterrupt(1);
-    }
-  }
-
-  function tryToContinueFlushing () {
-    if (requestInterruptSupport) {
-      global.requestInterrupt(0);
-    }
-  }
 
   function nextTickHandler () {
     pending = false;
@@ -2481,6 +2481,29 @@ function genFilterCode (key) {
 }
 
 /*  */
+/**
+ * Created by zhiyuan.huang@ddder.net.
+ */
+
+'use strict';
+
+// compatible with v4.0.0-rc.10
+var IS_COLLECTION_SYMBOL = '@@__IMMUTABLE_ITERABLE__@@';
+var IS_RECORD_SYMBOL = '@@__IMMUTABLE_RECORD__@@';
+
+function isImmutableCollection(maybeCollection) {
+  return Boolean(maybeCollection && maybeCollection[IS_COLLECTION_SYMBOL])
+}
+
+function isImmutableRecord(maybeRecord) {
+  return Boolean(maybeRecord && maybeRecord[IS_RECORD_SYMBOL])
+}
+
+function isImmutable(maybeImmutable) {
+  return isImmutableCollection(maybeImmutable) || isImmutableRecord(maybeImmutable)
+}
+
+/*  */
 
 var emptyObject = Object.freeze({});
 
@@ -2499,6 +2522,18 @@ function def (obj, key, val, enumerable) {
     writable: true,
     configurable: true
   });
+}
+
+
+
+
+function isShallowEqual(valA, valB) {
+  if (valA === valB) { return true; }
+  /* eslint-disable no-self-compare */
+  if (valA !== valA && valB !== valB) { return true; }
+
+  if (!isImmutable(valA) || !isImmutable(valB)) { return false; }
+  return valA.equals(valB);
 }
 
 /*  */
@@ -2787,8 +2822,7 @@ function defineReactive (
     },
     set: function reactiveSetter (newVal) {
       var value = getter ? getter.call(obj) : val;
-      /* eslint-disable no-self-compare */
-      if (newVal === value || (newVal !== newVal && value !== value)) {
+      if (isShallowEqual(newVal, value)) {
         return
       }
       /* eslint-enable no-self-compare */

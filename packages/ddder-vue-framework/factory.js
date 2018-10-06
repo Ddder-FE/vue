@@ -315,6 +315,29 @@ function once (fn) {
 }
 
 /*  */
+/**
+ * Created by zhiyuan.huang@ddder.net.
+ */
+
+'use strict';
+
+// compatible with v4.0.0-rc.10
+var IS_COLLECTION_SYMBOL = '@@__IMMUTABLE_ITERABLE__@@';
+var IS_RECORD_SYMBOL = '@@__IMMUTABLE_RECORD__@@';
+
+function isImmutableCollection(maybeCollection) {
+  return Boolean(maybeCollection && maybeCollection[IS_COLLECTION_SYMBOL])
+}
+
+function isImmutableRecord(maybeRecord) {
+  return Boolean(maybeRecord && maybeRecord[IS_RECORD_SYMBOL])
+}
+
+function isImmutable(maybeImmutable) {
+  return isImmutableCollection(maybeImmutable) || isImmutableRecord(maybeImmutable)
+}
+
+/*  */
 
 var emptyObject = Object.freeze({});
 
@@ -354,6 +377,16 @@ function parsePath (path) {
     }
     return obj
   }
+}
+
+
+function isShallowEqual(valA, valB) {
+  if (valA === valB) { return true; }
+  /* eslint-disable no-self-compare */
+  if (valA !== valA && valB !== valB) { return true; }
+
+  if (!isImmutable(valA) || !isImmutable(valB)) { return false; }
+  return valA.equals(valB);
 }
 
 var SSR_ATTR = 'data-server-rendered';
@@ -667,6 +700,20 @@ var hasSymbol =
   typeof Symbol !== 'undefined' && isNative(Symbol) &&
   typeof Reflect !== 'undefined' && isNative(Reflect.ownKeys);
 
+var requestInterruptSupport = isNative(global.requestInterrupt);
+
+function tryToInterruptFlushing () {
+  if (requestInterruptSupport) {
+    global.requestInterrupt(1);
+  }
+}
+
+function tryToContinueFlushing () {
+  if (requestInterruptSupport) {
+    global.requestInterrupt(0);
+  }
+}
+
 /**
  * Defer a task to execute it asynchronously.
  */
@@ -674,20 +721,6 @@ var nextTick = (function () {
   var callbacks = [];
   var pending = false;
   var timerFunc;
-
-  var requestInterruptSupport = isNative(global.requestInterrupt);
-
-  function tryToInterruptFlushing () {
-    if (requestInterruptSupport) {
-      global.requestInterrupt(1);
-    }
-  }
-
-  function tryToContinueFlushing () {
-    if (requestInterruptSupport) {
-      global.requestInterrupt(0);
-    }
-  }
 
   function nextTickHandler () {
     pending = false;
@@ -1130,8 +1163,7 @@ function defineReactive (
     },
     set: function reactiveSetter (newVal) {
       var value = getter ? getter.call(obj) : val;
-      /* eslint-disable no-self-compare */
-      if (newVal === value || (newVal !== newVal && value !== value)) {
+      if (isShallowEqual(newVal, value)) {
         return
       }
       /* eslint-enable no-self-compare */
@@ -3636,7 +3668,16 @@ function renderList (
   render
 ) {
   var ret, i, l, keys, key;
-  if (Array.isArray(val) || typeof val === 'string') {
+  if (isImmutableRecord(val)) {
+    val = val.toSeq().toMap();
+  }
+  if (isImmutableCollection(val)) {
+    var keySeq = val.keySeq();
+    ret = new Array(keySeq.count());
+    keySeq.forEach(function (key, i) {
+      ret[i] = render(val.get(key), key, i);
+    });
+  } else if (Array.isArray(val) || typeof val === 'string') {
     ret = new Array(val.length);
     for (i = 0, l = val.length; i < l; i++) {
       ret[i] = render(val[i], i);
