@@ -1,6 +1,6 @@
 /* @flow */
 
-import { isObject, isDef } from 'core/util/index'
+import { isObject, isDef, isImmutable, isImmutableRecord, isImmutableCollection } from 'core/util/index'
 
 /**
  * Runtime helper for rendering v-for lists.
@@ -14,7 +14,16 @@ export function renderList (
   ) => VNode
 ): ?Array<VNode> {
   let ret: ?Array<VNode>, i, l, keys, key
-  if (Array.isArray(val) || typeof val === 'string') {
+  if (isImmutableRecord(val)) {
+    val = val.toSeq().toMap();
+  }
+  if (isImmutableCollection(val)) {
+    let keySeq = val.keySeq();
+    ret = new Array(keySeq.count());
+    keySeq.forEach((key, i) => {
+      ret[i] = render(val.get(key), key, i);
+    })
+  } else if (Array.isArray(val) || typeof val === 'string') {
     ret = new Array(val.length)
     for (i = 0, l = val.length; i < l; i++) {
       ret[i] = render(val[i], i)

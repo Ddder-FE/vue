@@ -11,7 +11,8 @@ import {
   isObject,
   isPlainObject,
   isValidArrayIndex,
-  isServerRendering
+  isServerRendering,
+  isShallowEqual
 } from '../util/index'
 
 const arrayKeys = Object.getOwnPropertyNames(arrayMethods)
@@ -166,8 +167,7 @@ export function defineReactive (
     },
     set: function reactiveSetter (newVal) {
       const value = getter ? getter.call(obj) : val
-      /* eslint-disable no-self-compare */
-      if (newVal === value || (newVal !== newVal && value !== value)) {
+      if (isShallowEqual(newVal, value)) {
         return
       }
       /* eslint-enable no-self-compare */

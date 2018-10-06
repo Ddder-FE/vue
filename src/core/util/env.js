@@ -62,6 +62,20 @@ export const hasSymbol =
   typeof Symbol !== 'undefined' && isNative(Symbol) &&
   typeof Reflect !== 'undefined' && isNative(Reflect.ownKeys)
 
+export const requestInterruptSupport = isNative(global.requestInterrupt)
+
+export function tryToInterruptFlushing () {
+  if (requestInterruptSupport) {
+    global.requestInterrupt(1)
+  }
+}
+
+export function tryToContinueFlushing () {
+  if (requestInterruptSupport) {
+    global.requestInterrupt(0)
+  }
+}
+
 /**
  * Defer a task to execute it asynchronously.
  */
@@ -69,20 +83,6 @@ export const nextTick = (function () {
   const callbacks = []
   let pending = false
   let timerFunc
-
-  const requestInterruptSupport = isNative(global.requestInterrupt)
-
-  function tryToInterruptFlushing () {
-    if (requestInterruptSupport) {
-      global.requestInterrupt(1)
-    }
-  }
-
-  function tryToContinueFlushing () {
-    if (requestInterruptSupport) {
-      global.requestInterrupt(0)
-    }
-  }
 
   function nextTickHandler () {
     pending = false

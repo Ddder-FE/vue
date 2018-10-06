@@ -1,5 +1,7 @@
 /* @flow */
 
+import { isImmutable } from './immutable'
+
 export const emptyObject = Object.freeze({})
 
 /**
@@ -38,4 +40,14 @@ export function parsePath (path: string): any {
     }
     return obj
   }
+}
+
+
+export function isShallowEqual(valA: any, valB: any) {
+  if (valA === valB) return true;
+  /* eslint-disable no-self-compare */
+  if (valA !== valA && valB !== valB) return true;
+
+  if (!isImmutable(valA) || !isImmutable(valB)) return false;
+  return valA.equals(valB);
 }
