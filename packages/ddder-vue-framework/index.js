@@ -64,7 +64,6 @@ function createInstance (
   if ( env === void 0 ) env = {};
 
   // Virtual-DOM object.
-  // todo: what equal to weex document in ddder
   var document = new renderer.Document(instanceId);
 
   var instance = instances[instanceId] = { instanceId: instanceId, config: config, data: data, document: document, parentInstanceId: parentInstanceId };

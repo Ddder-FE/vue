@@ -39,7 +39,8 @@ const colorTypes = {
   color: processColor,
   backgroundColor: processColor,
   fillColor: processColor,
-  borderColor: processColor
+  borderColor: processColor,
+  textColor: processColor,
 }
 
 addTypeProcessor(colorTypes)

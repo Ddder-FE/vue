@@ -6326,6 +6326,29 @@ var events = {
   }
 };
 
+/**
+ * Created by zhiyuan.huang@ddder.net.
+ */
+
+'use strict';
+
+var DOCUMENT_NSTYLESHEET_SINGLETON_SYMBOL = '@@__DDDER_DOCUMENT_NStyleSheet_Singleton__@@';
+var DOCUMENT_NSTYLESHEET_NAMESPACES_SYMBOL = '@@__DDDER_DOCUMENT_NStyleSheet_Namespaces__@@';
+var VM_NSTYLESHEET_NAMESPACE_SYMBOL = '@@__DDDER_VM_NStyleSheet_Namespace__@@';
+var ELEMENT_KLASS_LIST_SYMBOL = '@@__DDDER_ELEMENT_Klass_List__@@';
+
+/**
+ * Created by zhiyuan.huang@ddder.net.
+ */
+
+'use strict';
+
+var isNativeSupportNStyleSheet = isNative(NStyleSheet);
+
+function isNStyleSheetSupport(vm) {
+  return isNativeSupportNStyleSheet && !!vm.$options[VM_NSTYLESHEET_NAMESPACE_SYMBOL];
+}
+
 /*  */
 
 function updateClass (oldVnode, vnode) {
@@ -6940,6 +6963,7 @@ function serializeStyleObj (styleSheet) {
 }
 
 function updateStyleSheet (oldVnode, vnode) {
+  var inUpdateHook = isDef(oldVnode);
   var el = vnode.elm;
   var newClassString = updateClass(oldVnode, vnode);
   var newStyle = updateStyle(oldVnode, vnode);
@@ -6947,46 +6971,76 @@ function updateStyleSheet (oldVnode, vnode) {
   var context = vnode.context;
   var StyleSheet = context.StyleSheet;
 
-  if (!StyleSheet) {
-    // todo: should compare prevStyleSheet with newStyle, and patch style diff
-    vnode.data.stylesheet = newStyle;
-    return setStyle(el, newStyle)
-  }
-
   var styleList = [];
 
   if (newClassString) {
     var newClassSet = Array.from(new Set(newClassString.split(' ')).values());
 
-    for (var i = 0; i < newClassSet.length; ++i) {
-      var val = newClassSet[i];
+    if (isNStyleSheetSupport(context)) {
+      var styleSheetNamespace = context.$options[VM_NSTYLESHEET_NAMESPACE_SYMBOL];
+      var elmKlassList = el[ELEMENT_KLASS_LIST_SYMBOL];
 
-      if (val.match(/^\d*$/)) {
-        styleList.push(Number(val));
-      } else {
-        var styleScope = context.styleScope && context.styleScope[val];
-        var parentNode = vnode;
+      if (!elmKlassList) {
+        elmKlassList = [];
+        el[ELEMENT_KLASS_LIST_SYMBOL] = elmKlassList;
+      }
 
-        while (isUndef(styleScope) && isDef(parentNode = parentNode.parent)) {
-          var parentContext = parentNode.context;
-          styleScope = parentContext.styleScope && parentContext.styleScope[val];
+      for (var i = 0; i < elmKlassList.length; ++i) {
+        var meta = elmKlassList[i];
+        if (meta.namespace === styleSheetNamespace) {
+          elmKlassList.splice(i, 1);
+          break;
         }
+      }
 
-        if (styleScope) {
-          styleList.push(styleScope);
+      var namespaceClassString = newClassSet.reduce(function (result, klass) {
+        result.push(klass + '_' + styleSheetNamespace);
+        return result
+      }, []).join(' ');
+
+      if (inUpdateHook) {
+        elmKlassList.unshift({
+          namespace: styleSheetNamespace,
+          klassString: namespaceClassString,
+        });
+      } else {
+        elmKlassList.push({
+          namespace: styleSheetNamespace,
+          klassString: namespaceClassString,
+        });
+      }
+
+      el.setClassName(elmKlassList.map(function (meta) { return meta.klassString; }).join(' '));
+    } else {
+      for (var i$1 = 0; i$1 < newClassSet.length; ++i$1) {
+        var val = newClassSet[i$1];
+
+        if (val.match(/^\d*$/)) {
+          styleList.push(Number(val));
+        } else {
+          var styleScope = context.styleScope && context.styleScope[val];
+          var parentNode = vnode;
+
+          while (isUndef(styleScope) && isDef(parentNode = parentNode.parent)) {
+            var parentContext = parentNode.context;
+            styleScope = parentContext.styleScope && parentContext.styleScope[val];
+          }
+
+          if (styleScope) {
+            styleList.push(styleScope);
+          }
         }
       }
     }
   }
 
   if (newStyle) {
+    StyleSheet.processStyle(newStyle);
     styleList.push(newStyle);
   }
 
   var newStyleSheet = vnode.data.stylesheet = StyleSheet.flatten(styleList);
   var prevStyleSheet = oldVnode.data.stylesheet || {};
-
-  StyleSheet.processStyle(newStyleSheet);
 
   var newStyleSheetBuffer = new StyleBuffer(el);
 
@@ -11020,7 +11074,8 @@ var colorTypes = {
   color: processColor,
   backgroundColor: processColor,
   fillColor: processColor,
-  borderColor: processColor
+  borderColor: processColor,
+  textColor: processColor,
 };
 
 addTypeProcessor(colorTypes);
@@ -11031,6 +11086,18 @@ addTypeProcessor(colorTypes);
  */
 
 'use strict';
+
+var hyphenateRE$2 = /([^-])([A-Z])/g;
+var hyphenate$2 = cached(function (str) {
+  return str
+    .replace(hyphenateRE$2, '$1-$2')
+    .replace(hyphenateRE$2, '$1-$2')
+    .toLowerCase()
+});
+
+function normalizeName$1 (name) {
+  return hyphenate$2(name)
+}
 
 function getStyle$1 (style) {
   if (typeof style === 'number') {
@@ -11081,6 +11148,55 @@ function install (Vue) {
       return result
     }
   };
+
+  Vue.mixin({
+    created: function() {
+      var styleScope = this['styleScope'];
+
+      if (!styleScope) { return; }
+
+      this.styleScope = null;
+      styleScope = Object.keys(styleScope).reduce(function (result, key) {
+        var styles = processStyle(getStyle$1(styleScope[key]));
+        result[key] = Object.keys(styles).reduce(function (subResult, prop) {
+          subResult[normalizeName$1(prop)] = styles[prop];
+          return subResult;
+        }, {});
+        return result;
+      }, {});
+
+      this.styleScope = Object.freeze(styleScope);
+
+      if (isNStyleSheetSupport(this)) {
+        var styleSheet = this.$document[DOCUMENT_NSTYLESHEET_SINGLETON_SYMBOL];
+        var documentStyleSheetNamespaces = this.$document[DOCUMENT_NSTYLESHEET_NAMESPACES_SYMBOL];
+        var componentStyleSheetNamespace = this.$options[VM_NSTYLESHEET_NAMESPACE_SYMBOL];
+
+        if (!styleSheet) {
+          styleSheet = new NStyleSheet();
+          this.$document[DOCUMENT_NSTYLESHEET_SINGLETON_SYMBOL] = styleSheet;
+          this.$document.setStyleSheet(styleSheet);
+        }
+
+        if (!documentStyleSheetNamespaces) {
+          documentStyleSheetNamespaces = {};
+          this.$document[DOCUMENT_NSTYLESHEET_NAMESPACES_SYMBOL] = documentStyleSheetNamespaces;
+        }
+
+        if (documentStyleSheetNamespaces[componentStyleSheetNamespace] === true) { return; }
+
+        Object.keys(styleScope).forEach(function (key) {
+          var value = styleScope[key];
+          styleSheet.defineClass(key + '_' + componentStyleSheetNamespace, Object.keys(value).reduce(function (result, prop) {
+            result.push(prop + ':' + value[prop]);
+            return result;
+          }, []).join(';'));
+        });
+
+        documentStyleSheetNamespaces[componentStyleSheetNamespace] = true;
+      }
+    },
+  });
 }
 
 /**

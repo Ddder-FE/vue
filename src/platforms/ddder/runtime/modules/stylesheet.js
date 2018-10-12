@@ -6,6 +6,9 @@
 
 import { isUndef, isDef, cached } from 'shared/util'
 
+import isNStyleSheetSupport from '../../util/isNStyleSheetSupport';
+import * as NStyleSheetSymbol from '../../util/NStyleSheetSymbol';
+
 import updateClass from './class'
 import updateStyle from './style'
 
@@ -60,6 +63,7 @@ function serializeStyleObj (styleSheet) {
 }
 
 function updateStyleSheet (oldVnode, vnode) {
+  const inUpdateHook = isDef(oldVnode)
   const el = vnode.elm
   const newClassString = updateClass(oldVnode, vnode)
   const newStyle = updateStyle(oldVnode, vnode)
@@ -67,46 +71,76 @@ function updateStyleSheet (oldVnode, vnode) {
   const context = vnode.context
   const StyleSheet = context.StyleSheet
 
-  if (!StyleSheet) {
-    // todo: should compare prevStyleSheet with newStyle, and patch style diff
-    vnode.data.stylesheet = newStyle
-    return setStyle(el, newStyle)
-  }
-
   const styleList = []
 
   if (newClassString) {
     const newClassSet = Array.from(new Set(newClassString.split(' ')).values())
 
-    for (let i = 0; i < newClassSet.length; ++i) {
-      const val = newClassSet[i]
+    if (isNStyleSheetSupport(context)) {
+      let styleSheetNamespace = context.$options[NStyleSheetSymbol.VM_NSTYLESHEET_NAMESPACE_SYMBOL]
+      let elmKlassList = el[NStyleSheetSymbol.ELEMENT_KLASS_LIST_SYMBOL]
 
-      if (val.match(/^\d*$/)) {
-        styleList.push(Number(val))
-      } else {
-        let styleScope = context.styleScope && context.styleScope[val];
-        let parentNode = vnode;
+      if (!elmKlassList) {
+        elmKlassList = []
+        el[NStyleSheetSymbol.ELEMENT_KLASS_LIST_SYMBOL] = elmKlassList
+      }
 
-        while (isUndef(styleScope) && isDef(parentNode = parentNode.parent)) {
-          let parentContext = parentNode.context;
-          styleScope = parentContext.styleScope && parentContext.styleScope[val];
+      for (let i = 0; i < elmKlassList.length; ++i) {
+        let meta = elmKlassList[i];
+        if (meta.namespace === styleSheetNamespace) {
+          elmKlassList.splice(i, 1);
+          break;
         }
+      }
 
-        if (styleScope) {
-          styleList.push(styleScope);
+      let namespaceClassString = newClassSet.reduce((result, klass) => {
+        result.push(klass + '_' + styleSheetNamespace)
+        return result
+      }, []).join(' ')
+
+      if (inUpdateHook) {
+        elmKlassList.unshift({
+          namespace: styleSheetNamespace,
+          klassString: namespaceClassString,
+        })
+      } else {
+        elmKlassList.push({
+          namespace: styleSheetNamespace,
+          klassString: namespaceClassString,
+        })
+      }
+
+      el.setClassName(elmKlassList.map(meta => meta.klassString).join(' '))
+    } else {
+      for (let i = 0; i < newClassSet.length; ++i) {
+        const val = newClassSet[i]
+
+        if (val.match(/^\d*$/)) {
+          styleList.push(Number(val))
+        } else {
+          let styleScope = context.styleScope && context.styleScope[val];
+          let parentNode = vnode;
+
+          while (isUndef(styleScope) && isDef(parentNode = parentNode.parent)) {
+            let parentContext = parentNode.context;
+            styleScope = parentContext.styleScope && parentContext.styleScope[val];
+          }
+
+          if (styleScope) {
+            styleList.push(styleScope);
+          }
         }
       }
     }
   }
 
   if (newStyle) {
+    StyleSheet.processStyle(newStyle)
     styleList.push(newStyle)
   }
 
   const newStyleSheet = vnode.data.stylesheet = StyleSheet.flatten(styleList)
   const prevStyleSheet = oldVnode.data.stylesheet || {}
-
-  StyleSheet.processStyle(newStyleSheet)
 
   const newStyleSheetBuffer = new StyleBuffer(el)
 

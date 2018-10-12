@@ -56,7 +56,6 @@ export function createInstance (
   parentInstanceId
 ) {
   // Virtual-DOM object.
-  // todo: what equal to weex document in ddder
   const document = new renderer.Document(instanceId)
 
   const instance = instances[instanceId] = { instanceId, config, data, document, parentInstanceId }
