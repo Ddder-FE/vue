@@ -6089,91 +6089,6 @@ var isFalsyAttrValue = function (val) {
 
 /*  */
 
-function genClassForVnode (vnode) {
-  var data = vnode.data;
-  var parentNode = vnode;
-  var childNode = vnode;
-
-  var classString = renderClass(data.staticClass, data.class);
-
-  while (isDef(childNode.componentInstance)) {
-    childNode = childNode.componentInstance._vnode;
-    if (childNode.data) {
-      classString = concat(renderClass(childNode.data.staticClass, childNode.data.class), classString);
-      data = mergeClassData(childNode.data, data);
-    }
-  }
-  while (isDef(parentNode = parentNode.parent)) {
-    if (parentNode.data) {
-      classString = concat(classString, renderClass(parentNode.data.staticClass, parentNode.data.class));
-      data = mergeClassData(data, parentNode.data);
-    }
-  }
-
-  return classString
-}
-
-function mergeClassData (child, parent) {
-  return {
-    staticClass: concat(child.staticClass, parent.staticClass),
-    class: isDef(child.class)
-      ? [child.class, parent.class]
-      : parent.class
-  }
-}
-
-function renderClass (
-  staticClass,
-  dynamicClass
-) {
-  if (isDef(staticClass) || isDef(dynamicClass)) {
-    return concat(staticClass, stringifyClass(dynamicClass))
-  }
-  /* istanbul ignore next */
-  return ''
-}
-
-function concat (a, b) {
-  return a ? b ? (a + ' ' + b) : a : (b || '')
-}
-
-function stringifyClass (value) {
-  if (Array.isArray(value)) {
-    return stringifyArray(value)
-  }
-  if (isObject(value)) {
-    return stringifyObject(value)
-  }
-  if (typeof value === 'string') {
-    return value
-  }
-  /* istanbul ignore next */
-  return ''
-}
-
-function stringifyArray (value) {
-  var res = '';
-  var stringified;
-  for (var i = 0, l = value.length; i < l; i++) {
-    if (isDef(stringified = stringifyClass(value[i])) && stringified !== '') {
-      if (res) { res += ' '; }
-      res += stringified;
-    }
-  }
-  return res
-}
-
-function stringifyObject (value) {
-  var res = '';
-  for (var key in value) {
-    if (value[key]) {
-      if (res) { res += ' '; }
-      res += key;
-    }
-  }
-  return res
-}
-
 /*  */
 
 /**
@@ -6335,7 +6250,6 @@ var events = {
 var DOCUMENT_NSTYLESHEET_SINGLETON_SYMBOL = '@@__DDDER_DOCUMENT_NStyleSheet_Singleton__@@';
 var DOCUMENT_NSTYLESHEET_NAMESPACES_SYMBOL = '@@__DDDER_DOCUMENT_NStyleSheet_Namespaces__@@';
 var VM_NSTYLESHEET_NAMESPACE_SYMBOL = '@@__DDDER_VM_NStyleSheet_Namespace__@@';
-var ELEMENT_KLASS_LIST_SYMBOL = '@@__DDDER_ELEMENT_Klass_List__@@';
 
 /**
  * Created by zhiyuan.huang@ddder.net.
@@ -6343,10 +6257,140 @@ var ELEMENT_KLASS_LIST_SYMBOL = '@@__DDDER_ELEMENT_Klass_List__@@';
 
 'use strict';
 
-var isNativeSupportNStyleSheet = isNative(NStyleSheet);
+function getComponentNStyleSheetScope(vm) {
+  if (!vm || !vm.$options) { return ''; }
+
+  var scope = vm.$options[VM_NSTYLESHEET_NAMESPACE_SYMBOL];
+
+  if (scope == undefined && vm.$options['classScopeInherited'] === true) {
+    var parentVM = vm.$vnode.context;
+    scope = getComponentNStyleSheetScope(parentVM) || '';
+
+    vm.$options[VM_NSTYLESHEET_NAMESPACE_SYMBOL] = scope;
+  }
+
+  return scope || '';
+}
+
+/**
+ * Created by zhiyuan.huang@ddder.net.
+ */
+
+'use strict';
+
+var isNativeSupportNStyleSheet = global.NStyleSheet && isNative(NStyleSheet);
 
 function isNStyleSheetSupport(vm) {
-  return isNativeSupportNStyleSheet && !!vm.$options[VM_NSTYLESHEET_NAMESPACE_SYMBOL];
+  return isNativeSupportNStyleSheet && !!getComponentNStyleSheetScope(vm);
+}
+
+/*  */
+
+function getStyleSheetNameSpaceForVnode(vnode) {
+  var namespace = '';
+
+  if (vnode.data && vnode.data['classScopeId']) {
+    namespace = vnode.data.classScopeId;
+  } else if (vnode.context && vnode.context.$options) {
+    namespace = getComponentNStyleSheetScope(vnode.context);
+  }
+
+  return namespace;
+}
+
+function genClassForVnode$1 (vnode) {
+  var data = vnode.data;
+  var parentNode = vnode;
+  var childNode = vnode;
+
+  var classString = renderClass$1(data.staticClass, data.class, getStyleSheetNameSpaceForVnode(vnode));
+
+  while (isDef(childNode.componentInstance)) {
+    childNode = childNode.componentInstance._vnode;
+    if (childNode.data) {
+      classString = concat$1(renderClass$1(childNode.data.staticClass, childNode.data.class, getStyleSheetNameSpaceForVnode(childNode)), classString);
+      data = mergeClassData$1(childNode.data, data);
+    }
+  }
+  while (isDef(parentNode = parentNode.parent)) {
+    if (parentNode.data) {
+      classString = concat$1(classString, renderClass$1(parentNode.data.staticClass, parentNode.data.class, getStyleSheetNameSpaceForVnode(parentNode)));
+      data = mergeClassData$1(data, parentNode.data);
+    }
+  }
+
+  return classString
+}
+
+function mergeClassData$1 (child, parent) {
+  return {
+    staticClass: concat$1(child.staticClass, parent.staticClass),
+    class: isDef(child.class)
+      ? [child.class, parent.class]
+      : parent.class
+  }
+}
+
+function renderClass$1 (
+  staticClass,
+  dynamicClass,
+  classScope
+) {
+  var result = '';
+
+  if (isDef(staticClass) || isDef(dynamicClass)) {
+    result = concat$1(staticClass, stringifyClass$1(dynamicClass));
+  }
+
+  if (isNativeSupportNStyleSheet && classScope) {
+    result = result.split(' ').reduce(function (result, item) {
+      item && result.push(item + '_' + classScope);
+      return result;
+    }, []).join(' ');
+  }
+
+  return result;
+}
+
+function concat$1 (a, b) {
+  return a ? b ? (a + ' ' + b) : a : (b || '')
+}
+
+function stringifyClass$1 (value) {
+  if (Array.isArray(value)) {
+    return stringifyArray$1(value)
+  }
+  if (isObject(value)) {
+    return stringifyObject$1(value)
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  /* istanbul ignore next */
+  return ''
+}
+
+function stringifyArray$1 (value) {
+  var res = '';
+  var stringified;
+  for (var i = 0, l = value.length; i < l; i++) {
+    if (isDef(stringified = stringifyClass$1(value[i])) && stringified !== '') {
+      if (res) { res += ' '; }
+      res += stringified;
+    }
+  }
+  return res
+}
+
+function stringifyObject$1 (value) {
+  var res = '';
+  for (var key in value) {
+    if (value[key]) {
+      if (res) { res += ' '; }
+      res += key;
+    }
+  }
+  return res
 }
 
 /*  */
@@ -6366,7 +6410,7 @@ function updateClass (oldVnode, vnode) {
     return
   }
 
-  return genClassForVnode(vnode)
+  return genClassForVnode$1(vnode)
 }
 
 /*  */
@@ -6974,46 +7018,12 @@ function updateStyleSheet (oldVnode, vnode) {
   var styleList = [];
 
   if (newClassString) {
-    var newClassSet = Array.from(new Set(newClassString.split(' ')).values());
-
     if (isNStyleSheetSupport(context)) {
-      var styleSheetNamespace = context.$options[VM_NSTYLESHEET_NAMESPACE_SYMBOL];
-      var elmKlassList = el[ELEMENT_KLASS_LIST_SYMBOL];
-
-      if (!elmKlassList) {
-        elmKlassList = [];
-        el[ELEMENT_KLASS_LIST_SYMBOL] = elmKlassList;
-      }
-
-      for (var i = 0; i < elmKlassList.length; ++i) {
-        var meta = elmKlassList[i];
-        if (meta.namespace === styleSheetNamespace) {
-          elmKlassList.splice(i, 1);
-          break;
-        }
-      }
-
-      var namespaceClassString = newClassSet.reduce(function (result, klass) {
-        result.push(klass + '_' + styleSheetNamespace);
-        return result
-      }, []).join(' ');
-
-      if (inUpdateHook) {
-        elmKlassList.unshift({
-          namespace: styleSheetNamespace,
-          klassString: namespaceClassString,
-        });
-      } else {
-        elmKlassList.push({
-          namespace: styleSheetNamespace,
-          klassString: namespaceClassString,
-        });
-      }
-
-      el.setClassName(elmKlassList.map(function (meta) { return meta.klassString; }).join(' '));
+      el.setClassName(newClassString);
     } else {
-      for (var i$1 = 0; i$1 < newClassSet.length; ++i$1) {
-        var val = newClassSet[i$1];
+      var newClassSet = Array.from(new Set(newClassString.split(' ')).values());
+      for (var i = 0; i < newClassSet.length; ++i) {
+        var val = newClassSet[i];
 
         if (val.match(/^\d*$/)) {
           styleList.push(Number(val));

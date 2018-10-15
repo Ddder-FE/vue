@@ -6,7 +6,7 @@ import {
 
 import {
   genClassForVnode
-} from 'web/util/index'
+} from 'ddder/util/class'
 
 export default function updateClass (oldVnode: any, vnode: any) {
   const data: VNodeData = vnode.data

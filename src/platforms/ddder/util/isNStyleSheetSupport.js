@@ -5,10 +5,10 @@
 'use strict';
 
 import { isNative } from 'core/util/index'
-import { VM_NSTYLESHEET_NAMESPACE_SYMBOL } from './NStyleSheetSymbol';
+import { getComponentNStyleSheetScope } from './getComponentNStyleSheetScope';
 
-const isNativeSupportNStyleSheet = isNative(NStyleSheet);
+export const isNativeSupportNStyleSheet = global.NStyleSheet && isNative(NStyleSheet);
 
 export default function isNStyleSheetSupport(vm) {
-  return isNativeSupportNStyleSheet && !!vm.$options[VM_NSTYLESHEET_NAMESPACE_SYMBOL];
+  return isNativeSupportNStyleSheet && !!getComponentNStyleSheetScope(vm);
 };

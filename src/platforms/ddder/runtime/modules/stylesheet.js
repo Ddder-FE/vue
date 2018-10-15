@@ -74,44 +74,10 @@ function updateStyleSheet (oldVnode, vnode) {
   const styleList = []
 
   if (newClassString) {
-    const newClassSet = Array.from(new Set(newClassString.split(' ')).values())
-
     if (isNStyleSheetSupport(context)) {
-      let styleSheetNamespace = context.$options[NStyleSheetSymbol.VM_NSTYLESHEET_NAMESPACE_SYMBOL]
-      let elmKlassList = el[NStyleSheetSymbol.ELEMENT_KLASS_LIST_SYMBOL]
-
-      if (!elmKlassList) {
-        elmKlassList = []
-        el[NStyleSheetSymbol.ELEMENT_KLASS_LIST_SYMBOL] = elmKlassList
-      }
-
-      for (let i = 0; i < elmKlassList.length; ++i) {
-        let meta = elmKlassList[i];
-        if (meta.namespace === styleSheetNamespace) {
-          elmKlassList.splice(i, 1);
-          break;
-        }
-      }
-
-      let namespaceClassString = newClassSet.reduce((result, klass) => {
-        result.push(klass + '_' + styleSheetNamespace)
-        return result
-      }, []).join(' ')
-
-      if (inUpdateHook) {
-        elmKlassList.unshift({
-          namespace: styleSheetNamespace,
-          klassString: namespaceClassString,
-        })
-      } else {
-        elmKlassList.push({
-          namespace: styleSheetNamespace,
-          klassString: namespaceClassString,
-        })
-      }
-
-      el.setClassName(elmKlassList.map(meta => meta.klassString).join(' '))
+      el.setClassName(newClassString)
     } else {
+      const newClassSet = Array.from(new Set(newClassString.split(' ')).values())
       for (let i = 0; i < newClassSet.length; ++i) {
         const val = newClassSet[i]
 

@@ -20,7 +20,7 @@ var renderer = {
   components: components
 };
 
-var version = '2.5.0-ddder.17';
+var version = '2.5.0-ddder.20';
 
 function init (cfg) {
   renderer.Document = cfg.Document;
